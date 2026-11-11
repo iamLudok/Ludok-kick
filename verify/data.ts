@@ -18,7 +18,7 @@ function canon(value: unknown): string {
 async function main() {
   /* --- Ida y vuelta ------------------------------------------------------ */
   const source = await freshDbAsCurrent()
-  await writeSettings(source, { ...DEFAULT_SETTINGS, audioOffsetMs: 85, musicVolume: 0.6, lastLevel: 'peak', lastDj: 'minimal', showPerf: true })
+  await writeSettings(source, { ...DEFAULT_SETTINGS, audioOffsetMs: 85, musicVolume: 0.6, lastLevel: 'peak', lastDj: 'minimal', showPerf: true, unlockAll: true })
   const full = await addMatch(
     { goalsFor: 3, goalsAgainst: 2, goldenGoal: true, perfects: 7, goods: 4, powers: 2, bestStreak: 5, level: 'closing', dj: 'karl', rivalDj: 'ludok', stage: 'bilbao' },
     1000,
@@ -33,6 +33,7 @@ async function main() {
   eq('lleva los dos partidos', backup.matches.length, 2)
   check('el fichero no contiene ningún null', !json.includes('null'), json)
   check('la calibración de audio no viaja en la copia', !json.includes('audioOffsetMs'))
+  check('ni el modo prueba', !json.includes('unlockAll'))
 
   const target = await freshDbAsCurrent()
   // El móvil de destino ya tenía su propia calibración.

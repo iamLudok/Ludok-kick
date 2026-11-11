@@ -14,13 +14,10 @@ import type { GenreId } from './genres'
 export type DjId =
   | 'ludok'
   | 'karl'
-  | 'dabid'
   | 'daft'
   | 'deadmouse'
   | 'marsmelou'
-  | 'carlota'
-  | 'ameli'
-  | 'arnim'
+  | 'mismonik'
   | 'ritxie'
   | 'solomoon'
   | 'klaptone'
@@ -33,14 +30,35 @@ export type DjLook = {
   skin: string
   hairColor: string
   /** Peinado. Es lo que hace reconocible la silueta. */
-  hair: 'bald' | 'buzz' | 'short' | 'spiky' | 'slick' | 'long' | 'longCenter' | 'bob' | 'bun' | 'hood'
+  hair:
+    | 'bald'
+    | 'buzz'
+    | 'short'
+    | 'spiky'
+    | 'slick'
+    | 'quiff'
+    | 'fringe'
+    | 'messy'
+    | 'long'
+    | 'longBack'
+    | 'longCenter'
+    | 'bob'
+    | 'bobSide'
+    | 'bobCenter'
+    | 'bun'
+    | 'hood'
   /** Lo que tapa la cara, si algo. Con casco, cubo o cabeza de ratón, el peinado no se ve. */
   mask: 'none' | 'robot' | 'mouse' | 'marsh' | 'beak' | 'jester' | 'buff'
-  glasses: 'none' | 'round' | 'rect'
-  mouth: 'grin' | 'smile' | 'neutral' | 'open'
+  glasses: 'none' | 'round' | 'rect' | 'thick'
+  mouth: 'grin' | 'smile' | 'smirk' | 'neutral' | 'open'
   brows: 'frown' | 'flat' | 'raised'
-  facialHair: 'none' | 'stubble' | 'beard'
+  facialHair: 'none' | 'stubble' | 'goatee' | 'beard'
   headphones: boolean
+  /** Raya de ojos: un trazo hacia fuera desde el rabillo. */
+  eyeliner: boolean
+  hat: 'none' | 'tophat'
+  /** Mechones de otro color en la parte de delante (el verde de Mis Monik). */
+  streaks?: string
   /** Color de detalle: la capucha, el casco, el buff, los auriculares… */
   accent: string
 }
@@ -67,6 +85,8 @@ const look = (l: Partial<DjLook> & Pick<DjLook, 'jersey'>): DjLook => ({
   brows: 'flat',
   facialHair: 'none',
   headphones: false,
+  eyeliner: false,
+  hat: 'none',
   accent: '#2a2a32',
   ...l,
 })
@@ -86,15 +106,7 @@ export const DJS: Dj[] = [
     genre: 'techno',
     perk: 'Tiro más fuerte',
     stats: { ...BASE, kick: 1.12, power: 'stomp' },
-    look: look({ jersey: '#e8443a', skin: '#6b4330', hair: 'bald', mouth: 'grin', brows: 'raised', headphones: true, accent: '#2a2a32' }),
-  },
-  {
-    id: 'dabid',
-    name: 'Dabid Getta',
-    genre: 'edm',
-    perk: 'Salta más alto',
-    stats: { ...BASE, jump: 1.08, power: 'hype' },
-    look: look({ jersey: '#1d1d24', hairColor: '#e9c46a', hair: 'long', facialHair: 'stubble', mouth: 'smile', brows: 'raised' }),
+    look: look({ jersey: '#1d1d24', skin: '#5e3a28', hair: 'bald', mouth: 'grin', brows: 'raised' }),
   },
   {
     id: 'daft',
@@ -110,7 +122,7 @@ export const DJS: Dj[] = [
     genre: 'progressive',
     perk: 'Corre más rápido',
     stats: { ...BASE, speed: 1.06, power: 'bighead' },
-    look: look({ jersey: '#e8434f', mask: 'mouse', accent: '#e8434f' }),
+    look: look({ jersey: '#f3f1ec', mask: 'mouse', accent: '#2a6fbf' }),
   },
   {
     id: 'marsmelou',
@@ -121,28 +133,12 @@ export const DJS: Dj[] = [
     look: look({ jersey: '#f3f1ec', mask: 'marsh', accent: '#ffffff' }),
   },
   {
-    id: 'carlota',
-    name: 'Carlota de Whitte',
-    genre: 'dark',
-    perk: 'Tiro más fuerte',
-    stats: { ...BASE, kick: 1.12, power: 'wall' },
-    look: look({ jersey: '#141218', skin: '#f6d4bc', hairColor: '#141014', hair: 'longCenter', brows: 'frown' }),
-  },
-  {
-    id: 'ameli',
-    name: 'Ameli Lenz',
-    genre: 'hard',
+    id: 'mismonik',
+    name: 'Mis Monik',
+    genre: 'proghouse',
     perk: 'Corre más rápido',
     stats: { ...BASE, speed: 1.06, power: 'laser' },
-    look: look({ jersey: '#3a3f4a', skin: '#f6d4bc', hairColor: '#4a3022', hair: 'bob', brows: 'flat', mouth: 'smile' }),
-  },
-  {
-    id: 'arnim',
-    name: 'Arnim Ban Buren',
-    genre: 'trance',
-    perk: 'Salta más alto',
-    stats: { ...BASE, jump: 1.08, power: 'lowpass' },
-    look: look({ jersey: '#3f7fff', hairColor: '#8a6440', hair: 'spiky', mouth: 'grin', brows: 'raised' }),
+    look: look({ jersey: '#141218', skin: '#f3d3bd', hairColor: '#4a3426', hair: 'bobCenter', streaks: '#7cff3a', mouth: 'smile' }),
   },
   {
     id: 'ritxie',
@@ -150,7 +146,7 @@ export const DJS: Dj[] = [
     genre: 'minimal',
     perk: 'Ventana PERFECT más amplia',
     stats: { ...BASE, timing: 1.25, power: 'loop' },
-    look: look({ jersey: '#e8e8ea', hairColor: '#1a1a1e', hair: 'slick', glasses: 'rect', brows: 'flat' }),
+    look: look({ jersey: '#6b6b66', hairColor: '#e8b84a', hair: 'fringe', facialHair: 'stubble', brows: 'flat' }),
   },
   {
     id: 'solomoon',
@@ -158,7 +154,7 @@ export const DJS: Dj[] = [
     genre: 'melodic',
     perk: 'Ventana PERFECT más amplia',
     stats: { ...BASE, timing: 1.25, power: 'moon' },
-    look: look({ jersey: '#2f6b5a', skin: '#e2b48e', hairColor: '#2a1d16', hair: 'bun', facialHair: 'beard', brows: 'frown' }),
+    look: look({ jersey: '#b49a7a', skin: '#e2b48e', hairColor: '#6b5236', hair: 'longCenter', facialHair: 'beard', brows: 'frown' }),
   },
   {
     id: 'klaptone',
@@ -166,7 +162,7 @@ export const DJS: Dj[] = [
     genre: 'deep',
     perk: 'Corre más rápido',
     stats: { ...BASE, speed: 1.06, power: 'wings' },
-    look: look({ jersey: '#1d1d24', hairColor: '#121016', hair: 'slick', mask: 'beak', accent: '#e0b84a' }),
+    look: look({ jersey: '#1d1d24', hairColor: '#1a1410', hair: 'short', facialHair: 'beard', mask: 'beak', hat: 'tophat', accent: '#e0b84a' }),
   },
   {
     id: 'boris',
@@ -174,15 +170,15 @@ export const DJS: Dj[] = [
     genre: 'hightech',
     perk: 'Ventana PERFECT más amplia',
     stats: { ...BASE, timing: 1.2, power: 'jester' },
-    look: look({ jersey: '#1d1d24', mask: 'jester', accent: '#d8364a' }),
+    look: look({ jersey: '#1d1d24', mask: 'jester', accent: '#2f7fb0' }),
   },
   {
     id: 'ihm',
     name: 'I Hate Modems',
     genre: 'industrial',
-    perk: 'Tiro más fuerte y corre algo más',
-    stats: { ...BASE, kick: 1.12, speed: 1.04, power: 'blackout' },
-    look: look({ jersey: '#0e0e12', hair: 'hood', mask: 'buff', accent: '#26262e', brows: 'frown' }),
+    perk: 'Tiro más fuerte',
+    stats: { ...BASE, kick: 1.08, power: 'blackout' },
+    look: look({ jersey: '#0e0e12', hairColor: '#4a4e58', hair: 'messy', mask: 'buff', accent: '#15151a', brows: 'frown' }),
   },
 ]
 

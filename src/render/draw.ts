@@ -403,17 +403,7 @@ function drawPlayer(canvas: SkCanvas, k: Painter, p: PlayerState, ahead: number,
   canvas.drawRRect({ rect: { x: x - 15, y: y - 38, width: 30, height: 30 }, rx: 9, ry: 9 }, d.jersey)
   canvas.drawRRect({ rect: { x: x - 15, y: y - 38, width: 30, height: 30 }, rx: 9, ry: 9 }, k.outline)
 
-  // Pie que chuta: en reposo descansa en el suelo; durante el barrido sigue
-  // exactamente el mismo arco que usa la física para golpear.
-  if (p.kickT >= 0) {
-    const a = kickAngle(p)
-    const fx = x + f * Math.sin(a) * KICK.LEG
-    const fy = y - KICK.HIP_Y + Math.cos(a) * KICK.LEG
-    canvas.drawLine(x + f * 4, y - 26, fx, fy, d.leg)
-    drawShoe(canvas, k, fx, fy, f, (-a * f * 180) / Math.PI)
-  } else {
-    drawShoe(canvas, k, x + f * 11, y - 8, f, 0)
-  }
+  if (p.kickT < 0) drawShoe(canvas, k, x + f * 11, y - 8, f, 0)
 
   const cy = y - PLAYER.HEAD_CY
   if (p.bigT > 0) {
@@ -427,6 +417,18 @@ function drawPlayer(canvas: SkCanvas, k: Painter, p: PlayerState, ahead: number,
     canvas.restore()
   } else {
     drawHead(canvas, d, x, cy, f, ballX, ballY)
+  }
+
+  // La pierna que chuta va encima de todo: dibujada antes de la cabeza, las
+  // melenas largas (que caen por detrás de la cabeza, sobre el cuerpo) la
+  // tapaban y no se veía la patada. Sigue exactamente el mismo arco que usa
+  // la física para golpear.
+  if (p.kickT >= 0) {
+    const a = kickAngle(p)
+    const fx = x + f * Math.sin(a) * KICK.LEG
+    const fy = y - KICK.HIP_Y + Math.cos(a) * KICK.LEG
+    canvas.drawLine(x + f * 4, y - 26, fx, fy, d.leg)
+    drawShoe(canvas, k, fx, fy, f, (-a * f * 180) / Math.PI)
   }
 }
 

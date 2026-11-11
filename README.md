@@ -20,7 +20,7 @@ siguiente.
 | 5 | Poderes de DJ y barra de energía | Hecha |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Hecha |
 | 7 | Pulido: partículas, focos al ritmo, sonidos de interfaz, icono y splash | Hecha |
-| 8 | 14 DJs con su música y su habilidad, misiones para desbloquearlos y pantalla VS | Hecha |
+| 8 | 11 DJs con su música y su habilidad, misiones para desbloquearlos y pantalla VS | Hecha |
 
 ## Cómo se juega
 
@@ -46,26 +46,25 @@ siguiente.
 
 ## Los DJs
 
-Catorce caricaturas con nombres guiño a DJs conocidos (no se nombra a nadie, así que el APK se
-puede compartir). Cada uno pone su género, tiene un pequeño matiz de juego y su habilidad propia. Se empieza con DJ Ludok; el resto se desbloquea con
+Once caricaturas con nombres guiño a DJs conocidos (no se nombra a nadie, así que el APK se
+puede compartir). Cada uno pone su género, tiene un pequeño matiz de juego y su habilidad propia. Solo están los
+que se reconocen de un vistazo por algún rasgo (la calva, el flequillo, el pelo verde, la
+máscara): en el partido las cabezas son pequeñas y un DJ sin rasgo propio se confunde con otro. Se empieza con DJ Ludok; el resto se desbloquea con
 misiones.
 
 | DJ | Música | Ventaja | Habilidad | Se desbloquea… |
 |---|---|---|---|---|
 | **DJ Ludok** | House · 124 | Tiro algo más fuerte | Scratch | desde el principio |
 | **Karl Box** | Techno · 130 | Tiro más fuerte | Bombo | ganando tu primer partido |
-| **Dabid Getta** | EDM · 128 | Salta más | Manos arriba | metiendo 6 PERFECT en un partido |
 | **Daft Funk** | French house · 124 | PERFECT más amplio | Modo robot | ganando en Peak Time o Closing |
 | **Deadmouse** | Progressive · 128 | Más rápido | Cabeza gigante | ganando sin encajar |
 | **Marsmelou** | Future bounce · 128 | Salta más | Nube | lanzando 3 poderes en un partido |
-| **Carlota de Whitte** | Techno oscuro · 136 | Tiro más fuerte | Muro | ganando en los 3 escenarios |
-| **Ameli Lenz** | Techno · 140 | Más rápido | Rayo | ganando con gol de oro |
-| **Arnim Ban Buren** | Trance · 138 | Salta más | Low-pass | encadenando 5 PERFECT |
+| **Mis Monik** | Progressive house · 124 | Más rápido | Rayo | metiendo 6 PERFECT en un partido |
 | **Ritxie Hautin** | Minimal · 125 | PERFECT más amplio | Loop | ganando 3 partidos seguidos |
 | **Solomoon** | Melodic techno · 122 | PERFECT más amplio | Luna | ganando en Closing |
 | **Klaptone** | Deep house · 122 | Más rápido | Alas | con 10 victorias |
 | **Boris Brejtxa** | High-tech minimal · 126 | PERFECT más amplio | Bufón | ganando en Closing por 3 goles |
-| **I Hate Modems** | Techno industrial · 145 | Tiro y velocidad | Apagón | completando todas las demás |
+| **I Hate Modems** | Techno industrial · 145 | Tiro más fuerte | Apagón | completando todas las demás |
 
 Las misiones no se guardan aparte: se calculan a partir del historial de partidos. Así no hay
 dos cosas que puedan descuadrarse, y la copia de seguridad se lleva también el progreso. Los
@@ -109,6 +108,10 @@ se lanza al pulsarlo.
 | **Alas** | Planeas al caer y tienes un salto en el aire, durante 5 s |
 | **Bufón** | Al rival se le cambian izquierda y derecha 3 s (a la IA también la lía) |
 | **Apagón** | El rival pierde lo que tuviera cargado y se queda 6 s sin cargar ni lanzar nada |
+
+Manos arriba, Muro y Low-pass no las lleva ahora ningún DJ (eran de los que se quitaron). Siguen
+en el juego y probadas: salen si se juega con habilidades al azar (`POWER.SIGNATURE = false`) o
+si se le dan a un DJ nuevo.
 
 La IA también carga energía con sus PERFECT y usa sus poderes: los niveles altos esperan al
 momento bueno (el Muro con un tiro yendo a su portería, el Loop con el vinilo delante, el Low-pass en
@@ -241,7 +244,7 @@ src/audio/           La música y el reloj. Lo único que importa la librería d
   clock.ts           El reloj de audio leído desde el hilo del juego.
   useAudioSession.ts Enciende y apaga todo con la pantalla y con la app.
 src/content/         Los DJs y los escenarios: nombres, ventajas, colores, decorado y música.
-  djs.ts             Los catorce DJs.
+  djs.ts             Los once DJs.
   genres.ts          La música de cada DJ, con su tempo.
   missions.ts        Las misiones que desbloquean DJs.
   stages.ts          Los tres escenarios.

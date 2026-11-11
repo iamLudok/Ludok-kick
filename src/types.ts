@@ -54,6 +54,11 @@ export interface Settings {
   lastLevel?: Level
   /** Enseñar fps y milisegundos por frame durante el partido. Ausente = no. */
   showPerf?: boolean
+  /**
+   * Modo prueba: todos los DJs desbloqueados sin hacer las misiones. Se
+   * activa con un truco escondido en el menú. Ausente = no.
+   */
+  unlockAll?: boolean
   /** Fecha de la última copia exportada; 0 si nunca. */
   lastBackup: number
   schemaVersion: number

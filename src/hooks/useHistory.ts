@@ -3,6 +3,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite'
 import type { DjId } from '../content/djs'
 import { unlockedDjs } from '../content/missions'
 import { db } from '../lib/db'
+import { useSettings } from './useSettings'
 import { tally, type Tally } from '../lib/matches'
 import { rowToMatch } from '../lib/rows'
 import { matches as matchesTable } from '../lib/schema'
@@ -36,6 +37,8 @@ export function useLevelTallies(): { data: Record<Level, Tally>; ready: boolean 
  */
 export function useUnlocks(): { unlocked: Set<DjId>; history: MatchRecord[]; ready: boolean } {
   const { history, ready } = useHistory()
-  const unlocked = useMemo(() => unlockedDjs(history), [history])
+  const { data: settings } = useSettings()
+  const all = settings.unlockAll === true
+  const unlocked = useMemo(() => unlockedDjs(history, all), [history, all])
   return { unlocked, history, ready }
 }

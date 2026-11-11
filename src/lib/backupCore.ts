@@ -43,7 +43,9 @@ export async function exportAll(database: AppDb): Promise<BackupFile> {
   // El desfase de audio NO se exporta: es una medida de este móvil con estos
   // auriculares. Restaurado en otro aparato, todos los remates se juzgarían
   // con el retraso del móvil viejo, y no habría forma de notar por qué.
-  const { audioOffsetMs: _deviceOnly, ...portable } = await readSettings(database)
+  // El modo prueba tampoco: es para probar en este móvil, no algo que deba
+  // aparecer activado al restaurar una copia en otro.
+  const { audioOffsetMs: _deviceOnly, unlockAll: _testOnly, ...portable } = await readSettings(database)
   return {
     app: 'ludok-kick',
     schemaVersion: SCHEMA_VERSION,

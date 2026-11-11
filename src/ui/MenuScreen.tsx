@@ -1,4 +1,7 @@
-import { StyleSheet, View } from 'react-native'
+import { useRef } from 'react'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { playUi } from '../audio/ui'
+import { updateSettings } from '../lib/settings'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DJS } from '../content/djs'
@@ -17,6 +20,17 @@ export function MenuScreen() {
   const { data: settings, ready } = useSettings()
   const { data: tallies, ready: talliesReady } = useLevelTallies()
   const { unlocked } = useUnlocks()
+  const taps = useRef<number[]>([])
+  const tapTitle = () => {
+    const now = Date.now()
+    // Solo cuentan los toques de los últimos 3 segundos: siete «seguidos».
+    taps.current = [...taps.current.filter((t) => now - t < 3000), now]
+    if (taps.current.length >= 7) {
+      taps.current = []
+      playUi('select')
+      void updateSettings({ unlockAll: settings.unlockAll !== true })
+    }
+  }
   // Seis caras: primero los DJs que ya tienes y luego siluetas de los que faltan.
   const crew = [...DJS.filter((d) => unlocked.has(d.id)), ...DJS.filter((d) => !unlocked.has(d.id))].slice(0, 6)
 
@@ -38,12 +52,20 @@ export function MenuScreen() {
       ]}
     >
       <View style={styles.left}>
-        <View style={styles.title}>
+        {/* Truco escondido: siete toques seguidos al título activan (o quitan) el
+            modo prueba, con todos los DJs desbloqueados. Sin ningún aviso
+            visual de que el título se puede tocar: es un easter egg. */}
+        <Pressable onPress={tapTitle} style={styles.title} accessible={false}>
           <Txt variant="banner">LUDOK </Txt>
           <Txt variant="banner" tone="brand">
             KICK
           </Txt>
-        </View>
+        </Pressable>
+        {ready && settings.unlockAll === true && (
+          <Txt variant="label" tone="brand">
+            Modo prueba: todos los DJs desbloqueados
+          </Txt>
+        )}
         <Txt variant="body" tone="muted">
           Uno contra uno, al ritmo del bombo.
         </Txt>

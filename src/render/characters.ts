@@ -44,6 +44,12 @@ export type DjPaints = {
   red: SkPaint
   mouseHead: SkPaint
   mouth: SkPaint
+  yellow: SkPaint
+  paisley: SkPaint
+  streak: SkPaint
+  thick: SkPaint
+  fat: SkPaint
+  hatBlack: SkPaint
 }
 
 function fill(color: string, alpha = 1): SkPaint {
@@ -100,6 +106,12 @@ export function createDjPaints(look: DjLook, outlineColor: string): DjPaints {
     red: fill('#d8364a'),
     mouseHead: fill('#18131c'),
     mouth: fill('#5a1f24'),
+    yellow: fill('#f2c230'),
+    paisley: stroke('#e8e8ea', 1.8, 0.85),
+    streak: fill(look.streaks ?? look.hairColor),
+    thick: stroke(outlineColor, 4.5),
+    fat: stroke(outlineColor, 7),
+    hatBlack: fill('#141216'),
   }
 }
 
@@ -183,6 +195,12 @@ function mouth(canvas: SkCanvas, d: DjPaints): void {
     canvas.drawRect({ x: -6, y: 18, width: 30, height: 5 }, d.white)
     canvas.restore()
     canvas.drawArc(r, 0, 180, true, d.line)
+  } else if (m === 'smirk') {
+    // Media sonrisa: sube solo por un lado.
+    const p = Skia.Path.Make()
+    p.moveTo(0, 17)
+    p.quadTo(10, 20, 19, 12)
+    canvas.drawPath(p, d.line)
   } else if (m === 'smile') {
     canvas.drawArc({ x: -2, y: 6, width: 22, height: 16 }, 20, 140, false, d.line)
   } else if (m === 'open') {
@@ -198,41 +216,67 @@ function drawBack(canvas: SkCanvas, d: DjPaints): void {
   'worklet'
   const l = d.look
   if (l.mask === 'mouse') {
-    canvas.drawCircle(-24, -R + 2, 21, d.mouseHead)
-    canvas.drawCircle(-24, -R + 2, 21, d.outline)
-    canvas.drawCircle(20, -R - 2, 22, d.mouseHead)
-    canvas.drawCircle(20, -R - 2, 22, d.outline)
+    // Orejas negras con un brillo en el borde: sin él, sobre un fondo oscuro
+    // desaparecían, y son lo que más se reconoce.
+    for (const [ox, oy, r] of [
+      [-26, -R + 2, 23],
+      [22, -R - 4, 24],
+    ]) {
+      canvas.drawCircle(ox, oy, r, d.mouseHead)
+      canvas.drawCircle(ox, oy, r, d.outline)
+      canvas.drawArc({ x: ox - r + 4, y: oy - r + 4, width: (r - 4) * 2, height: (r - 4) * 2 }, 200, 110, false, d.glint)
+    }
     return
   }
   if (l.mask === 'jester') {
-    const hat = Skia.Path.Make()
-    hat.moveTo(-R + 2, -10)
-    hat.quadTo(-R - 18, -R - 8, -R - 20, -R - 28)
-    hat.quadTo(-10, -R - 8, 0, -R + 4)
-    hat.quadTo(12, -R - 22, 26, -R - 34)
-    hat.quadTo(30, -R + 2, R - 2, -10)
-    hat.close()
-    canvas.drawPath(hat, d.accent)
-    canvas.drawPath(hat, d.outline)
-    for (const [bx, by] of [
-      [-R - 20, -R - 28],
-      [26, -R - 34],
-    ]) {
-      canvas.drawCircle(bx, by, 6.5, d.gold)
-      canvas.drawCircle(bx, by, 6.5, d.thinOutline)
+    // Corona de bufón: cinco puntas, alternando blanco y azul, con cascabeles dorados.
+    for (let i = 0; i < 5; i++) {
+      const a = Math.PI * (1.15 + i * 0.175)
+      const tipX = Math.cos(a) * (R + 26)
+      const tipY = Math.sin(a) * (R + 26) - 4
+      const p = Skia.Path.Make()
+      p.moveTo(Math.cos(a - 0.22) * (R - 6), Math.sin(a - 0.22) * (R - 6))
+      p.lineTo(tipX, tipY)
+      p.lineTo(Math.cos(a + 0.22) * (R - 6), Math.sin(a + 0.22) * (R - 6))
+      p.close()
+      canvas.drawPath(p, i % 2 === 0 ? d.white : d.accent)
+      canvas.drawPath(p, d.thinOutline)
+      canvas.drawCircle(tipX, tipY, 4.5, d.gold)
     }
     return
   }
   if (l.mask === 'robot' || l.mask === 'marsh') return
 
   const hs = l.hair
-  if (hs === 'long' || hs === 'longCenter') {
-    const rect = { x: -R - 7, y: -R + 2, width: R * 2 + 12, height: R * 2 + 26 }
+  if (hs === 'messy') {
+    // Pelo revuelto: mechones de punta en todas direcciones, más grande que la cabeza.
+    const p = Skia.Path.Make()
+    const n = 11
+    for (let i = 0; i <= n; i++) {
+      const a = Math.PI * (1.05 + (i / n) * 0.95)
+      const r = i % 2 === 0 ? R + 14 : R + 2
+      const x = Math.cos(a) * r - 2
+      const y = Math.sin(a) * r * 0.95 - 2
+      if (i === 0) p.moveTo(x, y)
+      else p.lineTo(x, y)
+    }
+    p.close()
+    canvas.drawPath(p, d.hair)
+    canvas.drawPath(p, d.outline)
+  }
+  if (hs === 'long' || hs === 'longCenter' || hs === 'longBack') {
+    // Hasta los hombros y no más: con más largo y más ancho tapaba el cuerpo.
+    const rect = { x: -R - 5, y: -R + 2, width: R * 2 + 8, height: R * 2 + 12 }
     canvas.drawRRect({ rect, rx: R, ry: R * 0.9 }, d.hair)
     canvas.drawRRect({ rect, rx: R, ry: R * 0.9 }, d.outline)
-  } else if (hs === 'bob') {
+  } else if (hs === 'bob' || hs === 'bobSide' || hs === 'bobCenter') {
     const rect = { x: -R - 8, y: -R, width: R * 2 + 14, height: R * 2 + 10 }
     canvas.drawRRect({ rect, rx: R, ry: R * 0.8 }, d.hair)
+    if (l.streaks) {
+      // Los mechones de color asoman por los dos lados de la cara, hasta la mandíbula.
+      canvas.drawRRect({ rect: { x: -R - 8, y: -R + 6, width: 16, height: R * 2 + 4 }, rx: 8, ry: 8 }, d.streak)
+      canvas.drawRRect({ rect: { x: R - 8, y: -R + 6, width: 14, height: R * 2 + 4 }, rx: 7, ry: 7 }, d.streak)
+    }
     canvas.drawRRect({ rect, rx: R, ry: R * 0.8 }, d.outline)
   } else if (hs === 'bun') {
     canvas.drawCircle(-6, -R - 6, 13, d.hair)
@@ -243,7 +287,15 @@ function drawBack(canvas: SkCanvas, d: DjPaints): void {
   }
 
   // La oreja de atrás asoma por el lado (con capucha o melena no se ve).
-  if (hs !== 'hood' && hs !== 'long' && hs !== 'longCenter' && hs !== 'bob') {
+  if (
+    hs !== 'hood' &&
+    hs !== 'long' &&
+    hs !== 'longCenter' &&
+    hs !== 'longBack' &&
+    hs !== 'bob' &&
+    hs !== 'bobSide' &&
+    hs !== 'bobCenter'
+  ) {
     canvas.drawOval({ x: -R - 6, y: -6, width: 14, height: 18 }, d.skin)
     canvas.drawOval({ x: -R - 6, y: -6, width: 14, height: 18 }, d.outline)
   }
@@ -251,6 +303,27 @@ function drawBack(canvas: SkCanvas, d: DjPaints): void {
     // La diadema de los auriculares, por encima de la cabeza.
     canvas.drawArc({ x: -R - 3, y: -R - 5, width: R * 2 + 4, height: R * 2 + 4 }, 195, 150, false, d.band)
   }
+}
+
+/**
+ * Flequillo largo que cae en diagonal y tapa el ojo de atrás. Se pinta dos
+ * veces: con el resto del pelo y, otra vez, encima de los ojos (si no, el ojo
+ * tapado asomaba por encima del flequillo).
+ */
+function drawFringe(canvas: SkCanvas, d: DjPaints): void {
+  'worklet'
+  const p = Skia.Path.Make()
+  p.moveTo(-R - 4, 8)
+  p.lineTo(-R - 4, -R - 4)
+  p.lineTo(R + 4, -R - 4)
+  p.lineTo(R + 4, -R + 8)
+  p.quadTo(16, -R + 12, 6, 4)
+  p.quadTo(-6, 6, -R - 4, 8)
+  p.close()
+  clipHead(canvas)
+  canvas.drawPath(p, d.hair)
+  canvas.drawPath(p, d.thinOutline)
+  canvas.restore()
 }
 
 /** Pelo por encima de la cabeza. */
@@ -274,13 +347,34 @@ function drawHair(canvas: SkCanvas, d: DjPaints): void {
     p.lineTo(R, -14)
     p.close()
     canvas.drawPath(p, d.hair)
-  } else if (hs === 'slick') {
+  } else if (hs === 'slick' || hs === 'longBack') {
     // Engominado hacia atrás: brillante y pegado.
     canvas.drawOval({ x: -R - 8, y: -R - 16, width: R * 2 + 12, height: R + 4 }, d.hair)
     canvas.drawOval({ x: -R + 4, y: -R - 4, width: R, height: 8 }, d.shine)
   } else if (hs === 'bob') {
     // Flequillo recto tapando la frente.
     canvas.drawRect({ x: -R, y: -R, width: R * 2, height: R - 14 }, d.hair)
+  } else if (hs === 'bobCenter') {
+    // Raya al medio: dos cortinas que enmarcan la cara, del color de los mechones.
+    const c = d.look.streaks ? d.streak : d.hair
+    canvas.drawOval({ x: -R - 2, y: -R - 10, width: R * 2 + 4, height: 22 }, d.hair)
+    canvas.drawOval({ x: -R - 14, y: -R - 6, width: R, height: R * 2.2 }, c)
+    canvas.drawOval({ x: R - 10, y: -R - 6, width: R * 0.7, height: R * 2.2 }, c)
+    canvas.drawLine(-2, -R - 2, -6, -R + 10, d.line)
+  } else if (hs === 'bobSide') {
+    // Raya al lado: el pelo cae en diagonal sobre la frente desde la nuca.
+    const p = Skia.Path.Make()
+    p.moveTo(-R - 4, 6)
+    p.lineTo(-R - 4, -R - 4)
+    p.lineTo(R + 4, -R - 4)
+    p.lineTo(R + 4, -R + 6)
+    p.quadTo(4, -R + 4, -14, -10)
+    p.close()
+    canvas.drawPath(p, d.hair)
+  } else if (hs === 'fringe') {
+    drawFringe(canvas, d)
+  } else if (hs === 'quiff' || hs === 'messy') {
+    canvas.drawOval({ x: -R - 6, y: -R - 14, width: R * 2 + 10, height: R + 2 }, d.hair)
   } else if (hs === 'longCenter') {
     // Raya al medio: dos cortinas que bajan por los lados de la cara.
     canvas.drawOval({ x: -R - 14, y: -R - 10, width: R + 2, height: R * 1.8 }, d.hair)
@@ -308,15 +402,19 @@ function drawHelmet(canvas: SkCanvas, d: DjPaints): boolean {
     return true
   }
   if (m === 'mouse') {
-    canvas.drawCircle(0, 0, R, d.mouseHead)
+    // Cabeza de ratón: azul, la mitad de abajo blanca y ojos amarillos con una X.
+    canvas.drawCircle(0, 0, R, d.accent)
+    clipHead(canvas)
+    canvas.drawOval({ x: -R + 2, y: 0, width: R * 2 + 6, height: R * 1.6 }, d.white)
+    canvas.drawCircle(-R * 1.5, R * 0.1, R * 1.05, d.accentShade)
+    canvas.restore()
     canvas.drawCircle(0, 0, R, d.outline)
     for (const e of [NEAR, FAR]) {
-      canvas.drawCircle(e.x, e.y - 2, e.rx + 3, d.white)
-      xEye(canvas, d, e.x, e.y - 2, e.rx * 0.55)
+      const r = e.rx + 4
+      canvas.drawCircle(e.x, e.y - 4, r, d.yellow)
+      canvas.drawCircle(e.x, e.y - 4, r, d.thinOutline)
+      xEye(canvas, d, e.x, e.y - 4, r * 0.45)
     }
-    canvas.drawArc({ x: -14, y: 4, width: 38, height: 26 }, 0, 180, true, d.white)
-    canvas.drawArc({ x: -14, y: 4, width: 38, height: 26 }, 0, 180, true, d.thinOutline)
-    for (const tx of [-6, 2, 10, 18]) canvas.drawLine(tx, 17, tx, 28, d.thinOutline)
     return true
   }
   if (m === 'marsh') {
@@ -327,12 +425,29 @@ function drawHelmet(canvas: SkCanvas, d: DjPaints): boolean {
     canvas.drawRect({ x: -R - 10, y: -R - 10, width: 16, height: R * 2 + 20 }, d.skinShade)
     canvas.restore()
     canvas.drawRRect(shape, d.outline)
-    xEye(canvas, d, FAR.x, -6, 5)
-    xEye(canvas, d, NEAR.x, -6, 6)
-    canvas.drawArc({ x: -8, y: 2, width: 30, height: 18 }, 15, 150, false, d.outline)
+    // Ojos en X gordos y una sonrisa ancha, todo en negro macizo.
+    for (const [ex, sz] of [
+      [FAR.x, 5],
+      [NEAR.x, 6.5],
+    ]) {
+      canvas.drawLine(ex - sz, -6 - sz, ex + sz, -6 + sz, d.fat)
+      canvas.drawLine(ex - sz, -6 + sz, ex + sz, -6 - sz, d.fat)
+    }
+    canvas.drawArc({ x: -10, y: 0, width: 34, height: 22 }, 20, 140, false, d.fat)
     return true
   }
   return false
+}
+
+/** Chistera negra con su cinta. */
+function drawHat(canvas: SkCanvas, d: DjPaints): void {
+  'worklet'
+  if (d.look.hat !== 'tophat') return
+  canvas.drawRRect({ rect: { x: -R - 10, y: -R + 2, width: R * 2 + 22, height: 10 }, rx: 5, ry: 5 }, d.hatBlack)
+  canvas.drawRRect({ rect: { x: -R - 10, y: -R + 2, width: R * 2 + 22, height: 10 }, rx: 5, ry: 5 }, d.thinOutline)
+  canvas.drawRRect({ rect: { x: -R + 4, y: -R - 34, width: R * 2 - 4, height: 38 }, rx: 6, ry: 6 }, d.hatBlack)
+  canvas.drawRRect({ rect: { x: -R + 4, y: -R - 34, width: R * 2 - 4, height: 38 }, rx: 6, ry: 6 }, d.thinOutline)
+  canvas.drawRect({ x: -R + 5, y: -R - 6, width: R * 2 - 6, height: 6 }, d.dark)
 }
 
 /**
@@ -373,16 +488,32 @@ export function drawHead(
     canvas.drawCircle(-R * 1.3, R * 0.2, R * 0.9, d.skinShade)
     canvas.restore()
     for (const e of [NEAR, FAR]) {
-      canvas.drawOval({ x: e.x - e.rx - 2, y: e.y - 3, width: e.rx * 2 + 4, height: 7 }, d.dark)
-      canvas.drawArc({ x: e.x - e.rx - 5, y: e.y - 13, width: e.rx * 2 + 10, height: 18 }, 200, 140, false, d.goldStroke)
+      // Un rombo azul con borde dorado alrededor de cada ojo.
+      const k = e === NEAR ? 1 : 0.8
+      const p = Skia.Path.Make()
+      p.moveTo(e.x, e.y - 14 * k)
+      p.lineTo(e.x + 11 * k, e.y)
+      p.lineTo(e.x, e.y + 10 * k)
+      p.lineTo(e.x - 11 * k, e.y)
+      p.close()
+      canvas.drawPath(p, d.accent)
+      canvas.drawPath(p, d.goldStroke)
+      canvas.drawOval({ x: e.x - e.rx + 1, y: e.y - 3, width: e.rx * 2 - 2, height: 6 }, d.dark)
     }
-    canvas.drawOval({ x: 2, y: 14, width: 14, height: 6 }, d.red)
+    // Sonrisa roja de máscara, de comisura a comisura.
+    canvas.drawArc({ x: -2, y: 8, width: 22, height: 12 }, 25, 130, true, d.red)
     canvas.drawCircle(0, 0, R, d.outline)
     canvas.restore()
     return
   }
 
   if (l.facialHair === 'stubble') band(canvas, -R, 6, R * 2, R, d.stubble)
+  else if (l.facialHair === 'goatee') {
+    // Perilla: la barbilla, un poco más marcada que una barba de tres días.
+    canvas.drawOval({ x: 0, y: 20, width: 18, height: 13 }, d.stubble)
+    canvas.drawOval({ x: 0, y: 20, width: 18, height: 13 }, d.stubble)
+    band(canvas, -R, 10, R * 2, R, d.stubble)
+  }
   else if (l.facialHair === 'beard') band(canvas, -R, 8, R * 2, R, d.hair)
 
   // Mofletes, salvo que la barba o el buff los tapen.
@@ -393,21 +524,26 @@ export function drawHead(
 
   eye(canvas, d, FAR, lx, ly)
   eye(canvas, d, NEAR, lx, ly)
+  if (l.hair === 'fringe') drawFringe(canvas, d)
+  if (l.eyeliner) {
+    for (const e of [NEAR, FAR]) canvas.drawLine(e.x + e.rx - 1, e.y - 3, e.x + e.rx + 5, e.y - 8, d.line)
+  }
 
   if (l.mask === 'beak') {
     // Antifaz dorado de pájaro sobre los ojos, con el pico hacia delante.
     band(canvas, -R, -18, R * 2, 22, d.gold, d.thinOutline)
     canvas.drawOval({ x: NEAR.x - 5, y: -10, width: 10, height: 9 }, d.dark)
     canvas.drawOval({ x: FAR.x - 4, y: -10, width: 8, height: 8 }, d.dark)
+    // El pico largo, que cae hacia abajo por delante de la barba.
     const beak = Skia.Path.Make()
-    beak.moveTo(6, -6)
-    beak.quadTo(R + 12, -4, R + 26, 14)
-    beak.quadTo(R + 2, 10, 8, 10)
+    beak.moveTo(4, -6)
+    beak.quadTo(R * 0.95, -2, R * 0.75, R + 18)
+    beak.quadTo(R * 0.25, 10, 0, 2)
     beak.close()
     canvas.drawPath(beak, d.gold)
     canvas.drawPath(beak, d.thinOutline)
-    canvas.drawLine(12, 2, R + 18, 10, d.thinOutline)
     canvas.drawCircle(0, 0, R, d.outline)
+    drawHat(canvas, d)
     canvas.restore()
     return
   }
@@ -418,6 +554,12 @@ export function drawHead(
       canvas.drawRRect({ rect: { x: e.x - e.rx - 4, y: e.y - 8, width: e.rx * 2 + 8, height: 15 }, rx: 3, ry: 3 }, d.line)
     }
     canvas.drawLine(FAR.x + FAR.rx + 4, -3, NEAR.x - NEAR.rx - 4, -3, d.line)
+  } else if (g === 'thick') {
+    // Gafas de pasta gruesas, negras.
+    for (const e of [NEAR, FAR]) {
+      canvas.drawRRect({ rect: { x: e.x - e.rx - 5, y: e.y - 9, width: e.rx * 2 + 10, height: 16 }, rx: 3, ry: 3 }, d.fat)
+    }
+    canvas.drawLine(FAR.x + FAR.rx + 5, -5, NEAR.x - NEAR.rx - 5, -5, d.fat)
   } else if (g === 'round') {
     canvas.drawCircle(NEAR.x, NEAR.y, NEAR.rx + 4, d.line)
     canvas.drawCircle(FAR.x, FAR.y, FAR.rx + 3, d.line)
@@ -426,12 +568,29 @@ export function drawHead(
   brows(canvas, d)
 
   if (l.mask === 'buff') {
-    // Buff hasta la nariz: solo se le ven los ojos.
-    band(canvas, -R, 4, R * 2, R, d.accent)
+    // Pañuelo hasta la nariz, negro con estampado blanco (como el suyo). Sin
+    // sombra encima: sobre tela negra se leía como una franja vertical rara.
     clipHead(canvas)
-    canvas.drawCircle(-R * 1.25, R * 0.15, R * 1.05, d.accentShade)
+    const cloth = Skia.Path.Make()
+    cloth.moveTo(-R - 2, 6)
+    cloth.quadTo(10, -4, R + 2, 2)
+    cloth.lineTo(R + 2, R + 2)
+    cloth.lineTo(-R - 2, R + 2)
+    cloth.close()
+    canvas.drawPath(cloth, d.accent)
+    canvas.drawPath(cloth, d.thinOutline)
+    // El estampado: unas florecillas y puntos blancos.
+    for (const [px, py, r] of [
+      [-12, 18, 5],
+      [12, 14, 6],
+      [26, 22, 4],
+      [0, 28, 4],
+      [-24, 26, 3],
+    ]) {
+      canvas.drawCircle(px, py, r, d.paisley)
+      canvas.drawCircle(px, py, r * 0.4, d.accent)
+    }
     canvas.restore()
-    canvas.drawLine(-R + 2, 5, R - 2, 5, d.line)
   } else {
     // Sin nariz a propósito: a este tamaño, cualquier trazo entre el ojo y la
     // boca se leía como parte del ojo (parecía un «9»).
@@ -443,6 +602,17 @@ export function drawHead(
     // El borde de la capucha enmarca la cara.
     canvas.drawArc({ x: -R - 3, y: -R - 3, width: R * 2 + 6, height: R * 2 + 6 }, 120, 260, false, d.accentStroke)
   }
+  if (l.hair === 'quiff') {
+    // El tupé: un mechón que sube por delante, por encima de la cabeza.
+    const t = Skia.Path.Make()
+    t.moveTo(-14, -R + 6)
+    t.quadTo(-6, -R - 14, 18, -R - 10)
+    t.quadTo(R - 2, -R - 4, R - 4, -R + 14)
+    t.close()
+    canvas.drawPath(t, d.hair)
+    canvas.drawPath(t, d.thinOutline)
+  }
+  drawHat(canvas, d)
   if (l.headphones) {
     // El casco de los auriculares sobre la oreja de atrás.
     canvas.drawRRect({ rect: { x: -R - 8, y: -10, width: 16, height: 26 }, rx: 7, ry: 7 }, d.accent)

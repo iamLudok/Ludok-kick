@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS settings (
   lastStage TEXT,
   lastLevel TEXT,
   showPerf INTEGER,
+  unlockAll INTEGER,
   lastBackup INTEGER NOT NULL DEFAULT 0,
   schemaVersion INTEGER NOT NULL
 );
@@ -54,6 +55,8 @@ export const MIGRATIONS: string[] = [
   // v2 → v3: lo que necesitan las misiones y no se guardaba.
   `ALTER TABLE matches ADD COLUMN powers INTEGER;
    ALTER TABLE matches ADD COLUMN bestStreak INTEGER;`,
+  // v3 → v4: el modo prueba que desbloquea todos los DJs.
+  `ALTER TABLE settings ADD COLUMN unlockAll INTEGER;`,
 ]
 
 /** Versión del esquema de SQLite. NO es la del formato de copia (`version.ts`). */

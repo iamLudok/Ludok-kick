@@ -25,13 +25,14 @@ const done = (dj: Parameters<typeof missionFor>[0], h: MatchRecord[]) => isDone(
 check('cada DJ menos el inicial tiene su misión', DJS.every((d) => d.id === STARTER || missionFor(d.id) !== undefined))
 check('y ninguno tiene dos', new Set(MISSIONS.map((m) => m.dj)).size === MISSIONS.length)
 check('sin jugar, solo está el inicial', unlockedDjs([]).size === 1 && unlockedDjs([]).has(STARTER))
+check('en modo prueba, todos', unlockedDjs([], true).size === DJS.length)
 
 check('perder no cuenta como primera victoria', !done('karl', [L()]))
 check('ganar sí', done('karl', [L(), W()]))
 check('un empate no es una victoria', !done('karl', [match({ goalsFor: 1, goalsAgainst: 1 })]))
 
-check('5 PERFECT no bastan para 6', !done('dabid', [W({ perfects: 5 }), L({ perfects: 5 })]))
-check('6 en un partido, sí (aunque se pierda)', done('dabid', [L({ perfects: 6 })]))
+check('5 PERFECT no bastan para 6', !done('mismonik', [W({ perfects: 5 }), L({ perfects: 5 })]))
+check('6 en un partido, sí (aunque se pierda)', done('mismonik', [L({ perfects: 6 })]))
 
 check('ganar en Warm-up no vale para Peak Time', !done('daft', [W()]))
 check('ganar en Closing también vale', done('daft', [W({ level: 'closing' })]))
@@ -43,15 +44,8 @@ check('perder 0–0 no cuenta', !done('deadmouse', [match({ goalsFor: 0, goalsAg
 check('partidos de antes de contar poderes no rompen nada', !done('marsmelou', [W({ powers: undefined })]))
 check('3 poderes en un partido', done('marsmelou', [L({ powers: 3 })]))
 
-check('ganar dos veces en el mismo escenario no son dos escenarios', !done('carlota', [W(), W(), W({ stage: 'donostia' })]))
-check('los tres escenarios', done('carlota', [W(), W({ stage: 'donostia' }), W({ stage: 'caserio' })]))
-check('perder en uno no lo cuenta', !done('carlota', [W(), W({ stage: 'donostia' }), L({ stage: 'caserio' })]))
 
-check('gol de oro perdido no vale', !done('ameli', [L({ goldenGoal: true })]))
-check('gol de oro ganado', done('ameli', [W({ goldenGoal: true })]))
 
-check('racha de 4 no basta', !done('arnim', [W({ bestStreak: 4 })]))
-check('racha de 5', done('arnim', [L({ bestStreak: 5 })]))
 
 {
   const a = W()

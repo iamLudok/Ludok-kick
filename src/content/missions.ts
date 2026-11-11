@@ -35,7 +35,7 @@ function longestWinRun(h: MatchRecord[]): number {
 
 const BASE_MISSIONS: Mission[] = [
   { dj: 'karl', title: 'Gana tu primer partido', target: 1, progress: (h) => wins(h).length },
-  { dj: 'dabid', title: 'Mete 6 PERFECT en un partido', target: 6, progress: (h) => best(h, (m) => m.perfects) },
+  { dj: 'mismonik', title: 'Mete 6 PERFECT en un partido', target: 6, progress: (h) => best(h, (m) => m.perfects) },
   {
     dj: 'daft',
     title: 'Gana en Peak Time o en Closing',
@@ -44,9 +44,6 @@ const BASE_MISSIONS: Mission[] = [
   },
   { dj: 'deadmouse', title: 'Gana sin encajar ningún gol', target: 1, progress: (h) => wins(h).filter((m) => m.goalsAgainst === 0).length },
   { dj: 'marsmelou', title: 'Lanza 3 poderes en un partido', target: 3, progress: (h) => best(h, (m) => m.powers ?? 0) },
-  { dj: 'carlota', title: 'Gana en los 3 escenarios', target: 3, progress: (h) => new Set(wins(h).map((m) => m.stage).filter(Boolean)).size },
-  { dj: 'ameli', title: 'Gana con gol de oro', target: 1, progress: (h) => wins(h).filter((m) => m.goldenGoal).length },
-  { dj: 'arnim', title: 'Encadena 5 PERFECT seguidos', target: 5, progress: (h) => best(h, (m) => m.bestStreak ?? 0) },
   { dj: 'ritxie', title: 'Gana 3 partidos seguidos', target: 3, progress: longestWinRun },
   { dj: 'solomoon', title: 'Gana en Closing', target: 1, progress: (h) => wins(h).filter((m) => m.level === 'closing').length },
   { dj: 'klaptone', title: 'Consigue 10 victorias', target: 10, progress: (h) => wins(h).length },
@@ -76,8 +73,9 @@ export function isDone(m: Mission, history: MatchRecord[]): boolean {
   return m.progress(history) >= m.target
 }
 
-/** Los DJs que se pueden elegir con este historial. */
-export function unlockedDjs(history: MatchRecord[]): Set<DjId> {
+/** Los DJs que se pueden elegir con este historial (o todos, en modo prueba). */
+export function unlockedDjs(history: MatchRecord[], all = false): Set<DjId> {
+  if (all) return new Set(DJS.map((d) => d.id))
   const out = new Set<DjId>([STARTER])
   for (const m of MISSIONS) if (isDone(m, history)) out.add(m.dj)
   return out

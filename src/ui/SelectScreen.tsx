@@ -237,8 +237,8 @@ const styles = StyleSheet.create({
   selected: { borderColor: palette.brand },
   detail: { width: 220, alignItems: 'center', justifyContent: 'center', gap: 2 },
   right: { flex: 1, gap: space.sm },
-  // Siete por fila: 14 DJs en dos filas iguales.
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, maxWidth: 7 * (FACE + 4) + 6 * space.xs },
+  // Seis por fila: los 11 DJs en dos filas casi iguales.
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, maxWidth: 6 * (FACE + 4) + 5 * space.xs },
   face: { borderRadius: radius.md, borderWidth: 2, borderColor: palette.line, backgroundColor: palette.surface },
   row: { flexDirection: 'row', gap: space.sm },
   stage: { flex: 1, alignItems: 'center', gap: space.xs },
