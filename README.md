@@ -17,7 +17,7 @@ siguiente.
 | 2 | Motor de beat: música sintetizada, remate al ritmo (PERFECT / GOOD), calibración de latencia, ajustes y copia de seguridad | Hecha |
 | 3 | IA con tres niveles (Warm-up, Peak Time, Closing) e historial de partidos | Hecha |
 | 4 | Drops en los goles y BPM que sube con el partido | Hecha |
-| 5 | Poderes de DJ y barra de energía | Pendiente |
+| 5 | Poderes de DJ y barra de energía | Hecha |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Pendiente |
 | 7 | Pulido: partículas, sacudida de cámara, icono y splash | Pendiente |
 
@@ -40,6 +40,23 @@ siguiente.
   tensión; en el primer beat a partir de unos 0,75 s cae el drop (bombo, bajo e impacto), la
   onda expansiva lanza por los aires al que encajó y tiembla la cámara. Luego se saca.
 - Empate al acabar el tiempo: gol de oro.
+
+## Poderes de DJ
+
+Cada remate PERFECT llena un cuarto de la barra de energía (el anillo del botón central y la
+barra junto a tu marcador). Llena, te toca un poder al azar, que aparece en el botón; se lanza
+al pulsarlo.
+
+| Poder | Qué hace |
+|---|---|
+| **Scratch** | Tu siguiente tiro, de pie o de cabeza, lleva un efecto que lo hunde hacia la portería. Se queda preparado hasta que tocas el vinilo, aunque haya un gol por medio |
+| **Low-pass** | El rival va a cámara lenta durante 3 s y la música se amortigua, menos el bombo, para que el beat se siga oyendo |
+| **Loop** | El vinilo se queda flotando 1,5 s donde esté; si iba por el suelo, sube a altura de volea. Tocarlo rompe el loop |
+| **Cue** | Vuelves al instante a tu posición de saque |
+
+La IA también carga energía con sus PERFECT y usa sus poderes: los niveles altos esperan al
+momento bueno (el Cue para volver a defender, el Loop con el vinilo delante, el Low-pass en
+plena disputa); los bajos los sueltan cuando sea.
 
 ## El rival
 
@@ -127,6 +144,7 @@ Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre e
 |---|---|
 | `verify/physics.ts` | Que el vinilo no se sale del campo ni se queda atrapado, que los goles se cuentan en el lado correcto, que el reloj acaba el partido o da paso al gol de oro, que ningún lado tiene ventaja y que el resultado es el mismo a 60 que a 120 Hz |
 | `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca, que el tiro sale con su potencia, que el tempo sube y encoge las ventanas, y que el drop cae cuando dice la música |
+| `verify/powers.ts` | La barra de energía (solo la llenan los PERFECT) y cada poder: que se lanza una vez por pulsación, que el Scratch hunde el tiro, que el Low-pass ralentiza solo al rival y se pasa, que el Loop deja el vinilo a tiro y se rompe al tocarlo, y que el Cue te devuelve a tu sitio |
 | `verify/sequencer.ts` | La música, con un motor de audio de mentira que apunta qué se programa: bombos en los beats, tempo que cambia solo entre compases, drop en un beat y sin bombo ni bajo durante la subida |
 | `verify/ai.ts` | Enfrenta los niveles entre sí y contra un rival quieto: que están ordenados, que los altos rematan más al ritmo, que nunca se atascan y que no se meten goles en propia |
 | `verify/data.ts` | Ida y vuelta de la copia de seguridad contra un SQLite de escritorio: que nada se pierde ni se mezcla y que se rechaza lo que hay que rechazar |
@@ -155,6 +173,7 @@ src/game/            El juego en sí. Sin React, sin Skia, sin nada nativo.
   step.ts            La simulación: física, goles, reloj y remate al ritmo.
   beat.ts            La aritmética del beat (distancia, fase, juicio).
   ai.ts              El rival: una fuente de inputs más, como los botones.
+  rng.ts             Azar con semilla: el mismo partido con los mismos inputs.
 src/audio/           La música y el reloj. Lo único que importa la librería de audio.
   engine.ts          El AudioContext y los buses.
   synth.ts           Los instrumentos y los efectos, sintetizados.

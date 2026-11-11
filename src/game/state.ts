@@ -8,7 +8,7 @@ export function emptyInput(): InputFrame {
   return { move: 0, jump: false, kick: false, power: false }
 }
 
-function startX(side: Side): number {
+export function startX(side: Side): number {
   'worklet'
   return side === 0 ? PLAYER.START_X : FIELD.W - PLAYER.START_X
 }
@@ -30,10 +30,15 @@ function createPlayer(side: Side, stats: PlayerStats): PlayerState {
     // Copia: el estado se muta en cada paso y no debe compartir objeto con la
     // ficha del personaje.
     stats: { speed: stats.speed, jump: stats.jump, kick: stats.kick },
+    energy: 0,
+    power: null,
+    powerHeld: false,
+    scratch: false,
+    slowT: 0,
   }
 }
 
-export function createInitialState(stats0?: PlayerStats, stats1?: PlayerStats): GameState {
+export function createInitialState(stats0?: PlayerStats, stats1?: PlayerStats, seed = 1): GameState {
   'worklet'
   // El valor por defecto se resuelve aquí dentro y no en la firma
   // (`stats0 = BASE_STATS`): el compilador de worklets no captura las variables
@@ -48,7 +53,7 @@ export function createInitialState(stats0?: PlayerStats, stats1?: PlayerStats): 
     golden: false,
     score: [0, 0],
     players: [createPlayer(0, a), createPlayer(1, b)],
-    ball: { x: FIELD.W / 2, y: BALL.DROP_Y, vx: 0, vy: 0, angle: 0, spin: 0 },
+    ball: { x: FIELD.W / 2, y: BALL.DROP_Y, vx: 0, vy: 0, angle: 0, spin: 0, curveT: 0, curveDir: 1, loopT: 0 },
     acc: 0,
     tick: 0,
     events: [],
@@ -56,6 +61,7 @@ export function createInitialState(stats0?: PlayerStats, stats1?: PlayerStats): 
     beat: { on: false, now: 0, t0: 0, bpm: BEAT.BPM_START, dropAt: -1 },
     speed: 1,
     scorer: 0,
+    seed: seed | 0,
   }
 }
 
@@ -72,6 +78,10 @@ export function resetForKickoff(s: GameState): void {
     p.kickCd = 0
     p.kickHit = false
     p.touchCd = 0
+    // La energía, el poder guardado y un Scratch preparado se conservan de un
+    // saque a otro: se pagaron con remates y no deben perderse por un gol. La
+    // cámara lenta, en cambio, se corta: el saque empieza limpio.
+    p.slowT = 0
   }
   const b = s.ball
   b.x = FIELD.W / 2
@@ -79,6 +89,8 @@ export function resetForKickoff(s: GameState): void {
   b.vx = 0
   b.vy = 0
   b.spin = 0
+  b.curveT = 0
+  b.loopT = 0
   s.phase = 'kickoff'
   s.phaseT = MATCH.KICKOFF_DELAY
 }

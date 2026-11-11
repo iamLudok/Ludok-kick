@@ -10,9 +10,10 @@
  * que en un juego se notan como tirones.
  */
 import { beatDelta, judgeDelta, judgePower, speedAt } from './beat'
-import { BALL, BODY, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, SHOCK, SIM } from './constants'
-import { emptyInput, resetForKickoff } from './state'
-import type { Contact, GameState, InputFrame, Judge, PlayerState, Side } from './types'
+import { BALL, BODY, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, POWER, SHOCK, SIM } from './constants'
+import { nextRandom } from './rng'
+import { emptyInput, resetForKickoff, startX } from './state'
+import { POWER_KINDS, type Contact, type GameState, type InputFrame, type Judge, type PlayerState, type Side } from './types'
 
 function clamp(v: number, lo: number, hi: number): number {
   'worklet'
@@ -222,6 +223,9 @@ function ballVsWorld(s: GameState): void {
         b.vy = 0
       } else {
         s.events.push({ type: 'bounce', speed: b.vy })
+        // El efecto se acaba al tocar el suelo: girando también después del
+        // bote, el vinilo se enroscaba por el suelo de forma muy rara.
+        b.curveT = 0
         b.vy = -b.vy * BALL.BOUNCE_GROUND
         b.vx *= BALL.GROUND_GRIP
       }
@@ -284,6 +288,66 @@ function ballVsCircle(
   return hard
 }
 
+/* --- Poderes ------------------------------------------------------------- */
+
+/** Fracción de su velocidad a la que va un jugador: menos de 1 bajo un Low-pass. */
+function pace(p: PlayerState): number {
+  'worklet'
+  return p.slowT > 0 ? POWER.SLOW_FACTOR : 1
+}
+
+/**
+ * Lo que pasa cada vez que un jugador toca el vinilo de verdad (pie o
+ * cabeza): rompe un Loop, suelta su Scratch si lo tenía preparado y, si fue
+ * PERFECT, carga energía.
+ */
+function onTouch(s: GameState, p: PlayerState, judge: Judge): void {
+  'worklet'
+  const b = s.ball
+  b.loopT = 0
+  if (p.scratch) {
+    p.scratch = false
+    b.curveT = POWER.CURVE_TIME
+    b.curveDir = p.facing
+  }
+  if (judge === 2 && p.power === null) {
+    p.energy = Math.min(1, p.energy + POWER.PER_PERFECT)
+    if (p.energy >= 1) {
+      // Al azar por ahora; con los personajes, cada DJ podrá tener el suyo.
+      p.power = POWER_KINDS[Math.floor(nextRandom(s) * POWER_KINDS.length)]
+      s.events.push({ type: 'charged', side: p.side, kind: p.power })
+    }
+  }
+}
+
+function usePower(s: GameState, p: PlayerState): void {
+  'worklet'
+  const kind = p.power
+  if (kind === null) return
+  const fromX = p.x
+  const fromY = p.y - PLAYER.HEAD_CY
+  p.power = null
+  p.energy = 0
+  if (kind === 'scratch') {
+    p.scratch = true
+  } else if (kind === 'lowpass') {
+    s.players[p.side === 0 ? 1 : 0].slowT = POWER.LOWPASS_TIME
+  } else if (kind === 'loop') {
+    const b = s.ball
+    b.loopT = POWER.LOOP_TIME
+    b.curveT = 0
+  } else {
+    // Cue: de vuelta al punto de partida, quieto y con el pie recogido.
+    p.x = startX(p.side)
+    p.y = FIELD.GROUND_Y
+    p.vx = 0
+    p.vy = 0
+    p.grounded = true
+    p.kickT = -1
+  }
+  s.events.push({ type: 'power', side: p.side, kind, x: fromX, y: fromY })
+}
+
 /** Cómo de a tiempo cae un toque que ocurre en este mismo paso. */
 function judgeTouch(s: GameState): Judge {
   'worklet'
@@ -295,6 +359,9 @@ function judgeTouch(s: GameState): Judge {
 function ballVsPlayer(s: GameState, p: PlayerState): void {
   'worklet'
   const b = s.ball
+  // Bajo un Low-pass el jugador se mueve más despacio, y así empuja el vinilo.
+  const pvx = p.vx * pace(p)
+  const pvy = p.vy * pace(p)
 
   // El pie solo existe mientras dura el barrido, y solo golpea lo que tiene
   // delante: un vinilo a la espalda salía disparado a través del propio cuerpo.
@@ -309,7 +376,7 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
       const t = clamp(p.kickT / KICK.DURATION, 0, 1)
       const judge = judgeTouch(s)
       const power = p.stats.kick * judgePower(judge)
-      b.vx = p.facing * KICK.VX * lerp(KICK.FLAT_VX, KICK.LOB_VX, t) * power + p.vx * KICK.INHERIT
+      b.vx = p.facing * KICK.VX * lerp(KICK.FLAT_VX, KICK.LOB_VX, t) * power + pvx * KICK.INHERIT
       b.vy = -KICK.VY * lerp(KICK.FLAT_LIFT, KICK.LOB_LIFT, t) * power
       b.spin = b.vx / BALL.R
       p.kickHit = true
@@ -317,6 +384,7 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
       // rozaba la cabeza en el paso siguiente y se juzgaba dos veces.
       p.touchCd = 0.15
       s.events.push({ type: 'kick', side: p.side, judge, x: b.x, y: b.y })
+      onTouch(s, p, judge)
     }
   }
 
@@ -325,8 +393,8 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
     p.x,
     p.y - PLAYER.HEAD_CY,
     PLAYER.HEAD_R,
-    p.vx,
-    p.vy,
+    pvx,
+    pvy,
     HEADER.RESTITUTION,
     HEADER.BOOST,
   )
@@ -337,8 +405,9 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
     b.vx *= power
     b.vy *= power
     s.events.push({ type: 'head', side: p.side, judge, x: b.x, y: b.y })
+    onTouch(s, p, judge)
   }
-  ballVsCircle(s, p.x, p.y - PLAYER.BODY_R, PLAYER.BODY_R, p.vx, p.vy, BODY.RESTITUTION, 0)
+  ballVsCircle(s, p.x, p.y - PLAYER.BODY_R, PLAYER.BODY_R, pvx, pvy, BODY.RESTITUTION, 0)
 }
 
 /** Cuánto se mete el vinilo en la cabeza o el cuerpo del jugador ahora mismo. */
@@ -394,10 +463,45 @@ function unstickBall(s: GameState): void {
   clampPlayerX(p)
 }
 
-function updateBall(s: GameState, dt: number): void {
+function updateBall(s: GameState, dt: number, realDt: number): void {
   'worklet'
   const b = s.ball
   const R = BALL.R
+
+  if (b.loopT > 0) {
+    // Loop: el vinilo se queda en el aire, sin gravedad. Si estaba bajo, sube
+    // con suavidad a una altura que se pueda rematar.
+    b.loopT -= realDt
+    const hover = Math.min(b.y, FIELD.GROUND_Y - POWER.LOOP_HEIGHT)
+    b.vx = 0
+    b.vy = (hover - b.y) * 6
+    b.y += b.vy * dt
+    b.angle += b.spin * dt
+    for (let i = 0; i < 2; i++) {
+      ballVsPlayer(s, s.players[0])
+      ballVsPlayer(s, s.players[1])
+      ballVsWorld(s)
+    }
+    // Un toque de verdad ya rompió el loop dentro de `ballVsPlayer`; un simple
+    // empujón, no: el vinilo vuelve a quedarse quieto donde lo dejen.
+    if (b.loopT > 0) {
+      b.vx = 0
+      b.vy = 0
+    }
+    return
+  }
+
+  if (b.curveT > 0) {
+    // Scratch: la trayectoria gira hacia el suelo del lado al que va el tiro,
+    // como un efecto muy cerrado. Gira la velocidad sin cambiar su tamaño.
+    b.curveT -= dt
+    const a = b.curveDir * POWER.CURVE_RATE * dt
+    const c = Math.cos(a)
+    const sn = Math.sin(a)
+    const vx = b.vx * c - b.vy * sn
+    b.vy = b.vx * sn + b.vy * c
+    b.vx = vx
+  }
 
   b.vy += BALL.GRAVITY * dt
   const drag = 1 - BALL.AIR_DRAG * dt
@@ -504,10 +608,18 @@ function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number, realDt
 
   // Tras el drop nadie manda: los jugadores van a donde los lleve la onda.
   const live = s.phase === 'play'
-  updatePlayer(s, s.players[0], live ? in0 : IDLE, dt)
-  updatePlayer(s, s.players[1], live ? in1 : IDLE, dt)
+  for (let i = 0; i < 2; i++) {
+    const p = s.players[i]
+    const inp = live ? (i === 0 ? in0 : in1) : IDLE
+    // El poder se lanza al pulsar, no mientras se mantiene el botón.
+    if (inp.power && !p.powerHeld) usePower(s, p)
+    p.powerHeld = inp.power
+    // Bajo un Low-pass, todo lo suyo va a cámara lenta: correr, saltar, chutar.
+    updatePlayer(s, p, inp, dt * pace(p))
+    if (p.slowT > 0) p.slowT -= realDt
+  }
   separatePlayers(s.players[0], s.players[1])
-  updateBall(s, dt)
+  updateBall(s, dt, realDt)
 
   if (live) {
     checkGoal(s)

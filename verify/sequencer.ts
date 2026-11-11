@@ -162,6 +162,15 @@ check('los compases que se publican están en orden', bars.every((b, i) => i ===
   check('sin bombos durante esa subida', kicks.filter((t) => t > goal2 + 0.25 && t < at2 - 1e-6).length === 0)
 }
 
+// Low-pass: la música se amortigua, pero el bombo tiene que seguir sonando.
+{
+  const from = ctx.currentTime
+  seq.muffle(3)
+  advance(from + 3)
+  const during = kicks.filter((t) => t > from + 0.25 && t < from + 3)
+  check('bajo un Low-pass el bombo sigue sonando', during.length >= 4, `${during.length} bombos en 3 s`)
+}
+
 seq.stop()
 console.log(failures === 0 ? '\n✔ secuenciador: todo correcto' : `\n✘ secuenciador: ${failures} fallo(s)`)
 process.exit(failures === 0 ? 0 : 1)

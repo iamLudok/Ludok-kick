@@ -11,6 +11,8 @@ const BARS_KEPT = 4
 /** Frecuencia a la que cierra el filtro antes del drop, y abierto del todo. */
 const FILTER_CLOSED = 320
 const FILTER_OPEN = 20000
+/** Lo cerrado que queda la música bajo un Low-pass: se oye, pero como desde otra sala. */
+const MUFFLED = 650
 
 export type Sequencer = {
   /** Deja de programar notas nuevas; `resume` sigue donde lo dejó. */
@@ -26,6 +28,8 @@ export type Sequencer = {
   drop: (from: number) => number
   /** Vuelve a la intro: la canción se monta otra vez desde el bombo solo. */
   restart: () => void
+  /** Low-pass: amortigua toda la música menos el bombo durante `seconds`. */
+  muffle: (seconds: number) => void
 }
 
 type Options = {
@@ -56,7 +60,15 @@ export function startSequencer(e: Engine, pattern: Pattern, opts: Options): Sequ
   // siguiente se colaban los últimos golpes de la anterior.
   const out = e.ctx.createGain()
   out.connect(e.music)
-  const voices: Engine = { ...e, music: out }
+  // Todo menos el bombo pasa además por su propio filtro, el del poder
+  // Low-pass. El bombo va por fuera: así, aunque la música se apague, el beat
+  // se sigue oyendo claro y se puede seguir rematando a tiempo.
+  const muffler = e.ctx.createBiquadFilter()
+  muffler.type = 'lowpass'
+  muffler.frequency.value = FILTER_OPEN
+  muffler.connect(out)
+  const voices: Engine = { ...e, music: muffler }
+  const kickVoice: Engine = { ...e, music: out }
 
   // Dónde va el secuenciador: el próximo paso a programar.
   let nextT = e.ctx.currentTime + 0.3 // un margen para que el primer bombo no nazca en el pasado
@@ -85,7 +97,7 @@ export function startSequencer(e: Engine, pattern: Pattern, opts: Options): Sequ
     const on = (layer: keyof Pattern['enter']) => full || bar >= p.enter[layer]
     const building = buildFrom >= 0 && t >= buildFrom - 1e-6 && (dropAt < 0 || t < dropAt - 1e-6)
 
-    if (p.kick.includes(step) && !building) kick(voices, t)
+    if (p.kick.includes(step) && !building) kick(kickVoice, t)
     if (p.hat.includes(step)) hat(voices, t, false)
     if (on('hat16') && p.hat16.includes(step)) hat(voices, t, false, 0.09)
     if (on('hat16') && p.openHat.includes(step)) hat(voices, t, true, 0.14)
@@ -160,12 +172,23 @@ export function startSequencer(e: Engine, pattern: Pattern, opts: Options): Sequ
     full = false
   }
 
+  const muffle = (seconds: number) => {
+    const now = e.ctx.currentTime
+    const f = muffler.frequency
+    f.cancelScheduledValues(now)
+    f.setValueAtTime(FILTER_OPEN, now)
+    f.exponentialRampToValueAtTime(MUFFLED, now + 0.15)
+    f.setValueAtTime(MUFFLED, now + seconds - 0.3)
+    f.exponentialRampToValueAtTime(FILTER_OPEN, now + seconds)
+  }
+
   resume()
   return {
     pause,
     resume,
     drop,
     restart,
+    muffle,
     stop: () => {
       pause()
       out.gain.value = 0

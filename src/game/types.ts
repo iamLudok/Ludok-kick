@@ -22,6 +22,11 @@ export type InputFrame = {
   power: boolean
 }
 
+/** Los poderes de DJ. */
+export type PowerKind = 'scratch' | 'lowpass' | 'loop' | 'cue'
+
+export const POWER_KINDS: PowerKind[] = ['scratch', 'lowpass', 'loop', 'cue']
+
 /** Multiplicadores por personaje. Con todo a 1 es el jugador base. */
 export type PlayerStats = {
   speed: number
@@ -47,6 +52,16 @@ export type PlayerState = {
   /** Evita contar varios toques seguidos de cabeza como toques distintos. */
   touchCd: number
   stats: PlayerStats
+  /** Barra de energía, de 0 a 1. Llena, trae un poder. */
+  energy: number
+  /** El poder listo para lanzar; null si no hay. */
+  power: PowerKind | null
+  /** El botón de poder estaba pulsado en el paso anterior: se lanza al pulsar, no al mantener. */
+  powerHeld: boolean
+  /** Tiene un Scratch preparado para su siguiente tiro. */
+  scratch: boolean
+  /** Lo que le queda de cámara lenta (Low-pass del rival), en segundos de verdad. */
+  slowT: number
 }
 
 export type BallState = {
@@ -57,6 +72,11 @@ export type BallState = {
   /** Solo visual: el giro del vinilo. */
   angle: number
   spin: number
+  /** Scratch: lo que le queda de curva y hacia qué lado gira (1 o -1). */
+  curveT: number
+  curveDir: number
+  /** Loop: lo que le queda flotando, en segundos de verdad. */
+  loopT: number
 }
 
 /** Cómo de a tiempo fue un toque: 0 normal, 1 GOOD, 2 PERFECT. */
@@ -70,6 +90,10 @@ export type GameEvent =
   /** Un toque al vinilo, con el pie o con la cabeza, y dónde estaba el vinilo. */
   | { type: 'kick' | 'head'; side: Side; judge: Judge; x: number; y: number }
   | { type: 'bounce'; speed: number }
+  /** Se lanza un poder. Para Cue, (x, y) es de dónde salió el jugador. */
+  | { type: 'power'; side: Side; kind: PowerKind; x: number; y: number }
+  /** La barra de energía se llenó y trajo un poder. */
+  | { type: 'charged'; side: Side; kind: PowerKind }
 
 /**
  * El pulso de la música, tal como lo ve la simulación. Los tiempos son del
@@ -119,4 +143,6 @@ export type GameState = {
   speed: number
   /** Quién marcó el último gol, para la onda del drop. */
   scorer: Side
+  /** Semilla del azar del partido (qué poder toca). Con la misma, el mismo partido. */
+  seed: number
 }

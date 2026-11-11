@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState, type AppStateStatus } from 'react-native'
 import { useSharedValue, type SharedValue } from 'react-native-reanimated'
-import type { Bar, Judge } from '../game/types'
+import { POWER } from '../game/constants'
+import type { Bar, Judge, PowerKind } from '../game/types'
 import type { ClockSource } from './clock'
 import { getEngine, setEngineRunning } from './engine'
 import type { Pattern } from './patterns'
 import { startSequencer, type Sequencer } from './sequencer'
-import { goalSfx, hitSfx } from './synth'
+import { chargedSfx, goalSfx, hitSfx, powerSfx } from './synth'
 
 export type AudioSession = {
   /** El reloj de audio, legible desde el hilo del juego. null hasta que arranca. */
@@ -21,6 +22,9 @@ export type AudioSession = {
   drop: (from: number) => number
   /** La canción vuelve a la intro (nuevo partido). */
   restart: () => void
+  /** Suena el poder lanzado; con Low-pass, además, la música se amortigua. */
+  playPower: (kind: PowerKind) => void
+  playCharged: () => void
 }
 
 /**
@@ -114,6 +118,11 @@ export function useAudioSession(
   const playGoal = useCallback(() => goalSfx(getEngine()), [])
   const drop = useCallback((from: number) => seqRef.current?.drop(from) ?? -1, [])
   const restart = useCallback(() => seqRef.current?.restart(), [])
+  const playPower = useCallback((kind: PowerKind) => {
+    powerSfx(getEngine(), kind)
+    if (kind === 'lowpass') seqRef.current?.muffle(POWER.LOWPASS_TIME)
+  }, [])
+  const playCharged = useCallback(() => chargedSfx(getEngine()), [])
 
-  return { source, bars, deviceLatencyMs, playHit, playGoal, drop, restart }
+  return { source, bars, deviceLatencyMs, playHit, playGoal, drop, restart, playPower, playCharged }
 }

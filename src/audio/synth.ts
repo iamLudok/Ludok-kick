@@ -7,7 +7,7 @@
  * el «silencio» es siempre 0.001.
  */
 import type { Engine } from './engine'
-import type { Judge } from '../game/types'
+import type { Judge, PowerKind } from '../game/types'
 
 const SILENCE = 0.001
 
@@ -162,6 +162,34 @@ export function goalSfx(e: Engine): void {
   amp.gain.exponentialRampToValueAtTime(SILENCE, t + 0.5)
   src.connect(amp)
   amp.connect(e.sfx)
+}
+
+/* --- Poderes ------------------------------------------------------------ */
+
+/** La barra se llenó: un arpegio que sube. */
+export function chargedSfx(e: Engine): void {
+  const t = e.ctx.currentTime
+  ;[660, 880, 1320].forEach((f, i) => blip(e, t + i * 0.06, f, f, 0.12, 0.2, 'triangle'))
+}
+
+export function powerSfx(e: Engine, kind: PowerKind): void {
+  const t = e.ctx.currentTime
+  if (kind === 'scratch') {
+    // Ida y vuelta del vinilo bajo la mano.
+    blip(e, t, 300, 1400, 0.09, 0.3, 'square')
+    blip(e, t + 0.09, 1400, 250, 0.11, 0.3, 'square')
+    blip(e, t + 0.2, 300, 1100, 0.08, 0.25, 'square')
+  } else if (kind === 'lowpass') {
+    // Algo que se hunde.
+    blip(e, t, 900, 90, 0.5, 0.35, 'triangle')
+  } else if (kind === 'loop') {
+    // El mismo golpecito repetido, como un bucle cortado.
+    for (let i = 0; i < 4; i++) blip(e, t + i * 0.07, 520, 520, 0.05, 0.25, 'square')
+  } else {
+    // Cue: el clic de volver al punto de cue y el pitido del pre-escucha.
+    blip(e, t, 2000, 2000, 0.02, 0.35, 'square')
+    blip(e, t + 0.05, 440, 880, 0.18, 0.25, 'sine')
+  }
 }
 
 /* --- El drop ------------------------------------------------------------- */

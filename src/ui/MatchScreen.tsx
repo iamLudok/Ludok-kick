@@ -19,7 +19,7 @@ import { addMatch } from '../lib/matches'
 import { useSettings } from '../hooks/useSettings'
 import { effectiveOffsetMs, updateSettings } from '../lib/settings'
 import { isLevel, type Level } from '../types'
-import { FX_LIFE, SHOCK_LIFE, createPainter, drawFrame, type BeatView } from '../render/draw'
+import { FX_LIFE, SHOCK_LIFE, createPainter, drawFrame, judgeLabel, powerLabel, type BeatView } from '../render/draw'
 import { PROTOTYPE_STAGE } from '../render/stage'
 import { Button } from './Button'
 import { LEVEL_NAME } from './labels'
@@ -36,9 +36,21 @@ type HudData = {
   golden: boolean
   /** Tempo del compás que suena; 0 sin música. */
   bpm: number
+  /** Energía de cada uno (0–1); llena es que tiene un poder listo. */
+  energy0: number
+  energy1: number
 }
 
-const INITIAL_HUD: HudData = { score0: 0, score1: 0, seconds: MATCH.DURATION, phase: 'kickoff', golden: false, bpm: 0 }
+const INITIAL_HUD: HudData = {
+  score0: 0,
+  score1: 0,
+  seconds: MATCH.DURATION,
+  phase: 'kickoff',
+  golden: false,
+  bpm: 0,
+  energy0: 0,
+  energy1: 0,
+}
 
 /** El drop que ha preparado la música para el gol número `goal` del partido. */
 type DropInfo = { goal: number; at: number }
@@ -121,7 +133,7 @@ function Match({ width, height, insetX, level }: { width: number; height: number
   const progress = useSharedValue(0)
   const tempo = useCallback(() => tempoAt(progress.value), [progress])
   const audio = useAudioSession(PROTOTYPE_PATTERN, tempo, { music: settings.musicVolume, sfx: settings.sfxVolume })
-  const { source, bars, playHit, playGoal, drop: prepareDrop, restart: restartMusic } = audio
+  const { source, bars, playHit, playGoal, playPower, playCharged, drop: prepareDrop, restart: restartMusic } = audio
   const dropInfo = useSharedValue<DropInfo>({ goal: -1, at: -1 })
 
   // Al marcar, la música decide cuándo cae el drop (en un beat) y se lo dice
@@ -173,12 +185,22 @@ function Match({ width, height, insetX, level }: { width: number; height: number
       let rt = runtime.value
       if (!rt) {
         rt = {
-          game: createInitialState(),
+          // La misma semilla que el rival: cada partido reparte poderes distintos.
+          game: createInitialState(undefined, undefined, seed.value),
           ai: createAi(level, seed.value),
           perfects: 0,
           goods: 0,
           saved: false,
-          hud: { score0: -1, score1: -1, seconds: -1, phase: 'kickoff', golden: false, bpm: -1 },
+          hud: {
+            score0: -1,
+            score1: -1,
+            seconds: -1,
+            phase: 'kickoff',
+            golden: false,
+            bpm: -1,
+            energy0: -1,
+            energy1: -1,
+          },
           clock: createAudioClock(),
           beatIn: { time: 0, t0: 0, bpm: BEAT.BPM_START, dropAt: -1 },
           beatView: { phase: -1, fx: [], shock: { x: 0, y: 0, age: -1 } },
@@ -233,7 +255,13 @@ function Match({ width, height, insetX, level }: { width: number; height: number
           scheduleOnRN(playHit, ev.judge)
           if (ev.side === 0 && ev.judge === 2) rt.perfects++
           if (ev.side === 0 && ev.judge === 1) rt.goods++
-          if (ev.judge > 0) view.fx.push({ judge: ev.judge, x: ev.x, y: ev.y, age: 0 })
+          if (ev.judge > 0) view.fx.push({ label: judgeLabel(ev.judge), x: ev.x, y: ev.y, age: 0 })
+        } else if (ev.type === 'power') {
+          scheduleOnRN(playPower, ev.kind)
+          view.fx.push({ label: powerLabel(ev.kind), x: ev.x, y: ev.y, age: 0 })
+        } else if (ev.type === 'charged') {
+          // Solo se avisa de la barra propia: la del rival se ve en el marcador.
+          if (ev.side === 0) scheduleOnRN(playCharged)
         } else if (ev.type === 'goal') {
           scheduleOnRN(onGoal, s.score[0] + s.score[1], ev.at)
         } else if (ev.type === 'drop') {
@@ -270,9 +298,20 @@ function Match({ width, height, insetX, level }: { width: number; height: number
         h.seconds !== seconds ||
         h.phase !== s.phase ||
         h.golden !== s.golden ||
-        h.bpm !== bpm
+        h.bpm !== bpm ||
+        h.energy0 !== s.players[0].energy ||
+        h.energy1 !== s.players[1].energy
       ) {
-        rt.hud = { score0: s.score[0], score1: s.score[1], seconds, phase: s.phase, golden: s.golden, bpm }
+        rt.hud = {
+          score0: s.score[0],
+          score1: s.score[1],
+          seconds,
+          phase: s.phase,
+          golden: s.golden,
+          bpm,
+          energy0: s.players[0].energy,
+          energy1: s.players[1].energy,
+        }
         scheduleOnRN(setHud, rt.hud)
         progress.value = 1 - s.timeLeft / MATCH.DURATION
       }
@@ -302,7 +341,9 @@ function Match({ width, height, insetX, level }: { width: number; height: number
       onGoal,
       painter,
       picture,
+      playCharged,
       playHit,
+      playPower,
       progress,
       runtime,
       seed,
@@ -344,6 +385,7 @@ function Match({ width, height, insetX, level }: { width: number; height: number
 
       <View style={styles.hud} pointerEvents="none">
         <View style={styles.scoreboard}>
+          <EnergyBar value={hud.energy0} color={PROTOTYPE_STAGE.players[0]} />
           <Txt variant="score" style={{ color: PROTOTYPE_STAGE.players[0] }}>
             {hud.score0}
           </Txt>
@@ -353,6 +395,7 @@ function Match({ width, height, insetX, level }: { width: number; height: number
           <Txt variant="score" style={{ color: PROTOTYPE_STAGE.players[1] }}>
             {hud.score1}
           </Txt>
+          <EnergyBar value={hud.energy1} color={PROTOTYPE_STAGE.players[1]} />
         </View>
         {/* El tempo a la vista: sube a lo largo del partido y se nota en el juego. */}
         <Txt variant="data" tone="muted" style={styles.bpm}>
@@ -406,7 +449,27 @@ function Match({ width, height, insetX, level }: { width: number; height: number
   )
 }
 
+/**
+ * La barra de energía de cada jugador, junto a su marcador. Llena, se enciende
+ * del color de los poderes: ese jugador tiene uno listo.
+ */
+function EnergyBar({ value, color }: { value: number; color: string }) {
+  const full = value >= 1
+  return (
+    <View style={styles.energy}>
+      <View
+        style={[
+          styles.energyFill,
+          { width: `${Math.round(Math.max(0, value) * 100)}%`, backgroundColor: full ? PROTOTYPE_STAGE.power : color },
+        ]}
+      />
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  energy: { width: 56, height: 8, borderRadius: radius.pill, backgroundColor: palette.line, overflow: 'hidden' },
+  energyFill: { height: '100%', borderRadius: radius.pill },
   root: { flex: 1, backgroundColor: palette.bg },
   hud: { ...StyleSheet.absoluteFill, alignItems: 'center' },
   scoreboard: {

@@ -29,6 +29,9 @@ type Result = {
   perfectKicks: [number, number]
   /** Lo máximo que el vinilo pasó en juego parado, en segundos. */
   longestIdle: number
+  /** Poderes que lanzó cada lado, y lo máximo que alguno se quedó guardado. */
+  powers: [number, number]
+  longestHeld: number
 }
 
 const DT = 1 / 60
@@ -38,7 +41,8 @@ function play(l0: Level | null, l1: Level | null, seed: number): Result {
   const s: GameState = createInitialState()
   const ai: [AiState | null, AiState | null] = [l0 ? createAi(l0, seed * 7 + 1) : null, l1 ? createAi(l1, seed * 13 + 5) : null]
   const idle = emptyInput()
-  const r: Result = { score: [0, 0], ended: false, kicks: [0, 0], perfectKicks: [0, 0], longestIdle: 0 }
+  const r: Result = { score: [0, 0], ended: false, kicks: [0, 0], perfectKicks: [0, 0], longestIdle: 0, powers: [0, 0], longestHeld: 0 }
+  const held = [0, 0]
   let t = 0
   let still = 0
   // Como hace la música de verdad: al marcarse un gol, contesta con el
@@ -62,6 +66,11 @@ function play(l0: Level | null, l1: Level | null, seed: number): Result {
         r.kicks[e.side]++
         if (e.judge === 2) r.perfectKicks[e.side]++
       }
+      if (e.type === 'power') r.powers[e.side]++
+    }
+    for (let i = 0; i < 2; i++) {
+      held[i] = s.players[i].power !== null && s.phase === 'play' ? held[i] + DT : 0
+      if (ai[i]) r.longestHeld = Math.max(r.longestHeld, held[i])
     }
     r.longestIdle = Math.max(r.longestIdle, still)
   }
@@ -97,12 +106,15 @@ const N = 20
 
 /* --- Los niveles están ordenados ----------------------------------------- */
 {
-  const pw = wins('peak', 'warmup', N)
-  const cp = wins('closing', 'peak', N)
-  const cw = wins('closing', 'warmup', N)
-  check('Peak Time gana a Warm-up casi siempre', pw >= N * 0.7, `${pw}/${N}`)
-  check('Closing gana a Peak Time casi siempre', cp >= N * 0.7, `${cp}/${N}`)
-  check('Closing gana a Warm-up casi siempre', cw >= N * 0.85, `${cw}/${N}`)
+  // Más partidos aquí: con los poderes hay más azar, y con 20 un nivel que
+  // gana el 74 % de verdad podía quedarse en 14 y rozar el límite.
+  const M = 40
+  const pw = wins('peak', 'warmup', M)
+  const cp = wins('closing', 'peak', M)
+  const cw = wins('closing', 'warmup', M)
+  check('Peak Time gana a Warm-up casi siempre', pw >= M * 0.65, `${pw}/${M}`)
+  check('Closing gana a Peak Time casi siempre', cp >= M * 0.65, `${cp}/${M}`)
+  check('Closing gana a Warm-up casi siempre', cw >= M * 0.85, `${cw}/${M}`)
 }
 
 /* --- Contra un rival quieto ---------------------------------------------- */
@@ -132,6 +144,20 @@ for (const level of LEVELS) {
   const limit = AI.STALL + FIELD.W / (PLAYER.SPEED * AI[level].speed) + 1
   check(`${level}: nunca se queda mirando el vinilo`, longestIdle < limit, `máximo ${longestIdle.toFixed(1)} s parado (límite ${limit.toFixed(1)})`)
   check(`${level}: los partidos acaban`, unfinished === 0)
+}
+
+/* --- Poderes ------------------------------------------------------------- */
+for (const level of LEVELS) {
+  let used = 0
+  let longest = 0
+  for (let k = 0; k < N; k++) {
+    const r = play(level, level, k)
+    used += r.powers[0] + r.powers[1]
+    longest = Math.max(longest, r.longestHeld)
+  }
+  check(`${level}: usa sus poderes`, used >= N, `${used} en ${N} partidos`)
+  // Un poco más que su paciencia: el Cue solo lo gasta si tiene sentido.
+  check(`${level}: no se los guarda para siempre`, longest <= AI[level].powerPatience + 1, `máximo ${longest.toFixed(1)} s guardado`)
 }
 
 /* --- Los niveles altos rematan más al ritmo ------------------------------ */

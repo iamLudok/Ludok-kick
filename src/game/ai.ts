@@ -36,6 +36,10 @@ export type AiState = {
   header: boolean
   /** Cuánto lleva el vinilo parado: si es mucho, va a por él como sea. */
   stillT: number
+  /** Cuánto lleva guardado el poder que tiene. */
+  powerT: number
+  /** En esta decisión, ¿espera al momento bueno para el poder? */
+  powerSmart: boolean
   out: InputFrame
 }
 
@@ -53,6 +57,8 @@ export function createAi(level: Level, seed: number): AiState {
     jumpCd: 0,
     header: false,
     stillT: 0,
+    powerT: 0,
+    powerSmart: false,
     out: { move: 0, jump: false, kick: false, power: false },
   }
 }
@@ -149,6 +155,7 @@ function think(ai: AiState, s: GameState, side: Side): void {
   const home = side === 0 ? AI.HOME_X : FIELD.W - AI.HOME_X
 
   ai.thinkT = L.think + rand(ai) * L.thinkJitter
+  ai.powerSmart = rand(ai) < L.powerIQ
   if (rand(ai) < L.blunder) ai.freezeT = L.freeze * (0.5 + rand(ai))
 
   // ¿De cabeza o esperándolo abajo? Solo tiene sentido si viene alto.
@@ -177,6 +184,39 @@ function think(ai: AiState, s: GameState, side: Side): void {
 }
 
 /**
+ * ¿Es buen momento para el poder que tiene? Cada poder tiene el suyo, como lo
+ * usaría alguien que sabe: el Cue para volver a defender, el Loop con el
+ * vinilo delante, el Low-pass en plena disputa. Los niveles bajos a menudo no
+ * esperan al momento y lo sueltan cuando sea.
+ */
+function wantsPower(ai: AiState, s: GameState, side: Side): boolean {
+  'worklet'
+  const p = s.players[side]
+  const opp = s.players[side === 0 ? 1 : 0]
+  const b = s.ball
+  const f = p.facing
+  const kind = p.power
+  // Sin paciencia para esperar el momento: lo suelta en cuanto lo tiene un rato.
+  if (!ai.powerSmart) return ai.powerT > 1.5 && kind !== 'cue'
+  const ownGoalX = side === 0 ? 0 : FIELD.W
+  const ahead = (b.x - p.x) * f
+  if (kind === 'scratch') return true
+  if (kind === 'lowpass') {
+    // El rival cerca del vinilo y el vinilo a su alcance: justo cuando importa.
+    return Math.abs(opp.x - b.x) < 220 && Math.abs(p.x - b.x) < 420
+  }
+  if (kind === 'loop') {
+    // Con el vinilo bajo y un poco por delante: lo deja quieto a tiro de volea.
+    return ahead > 30 && ahead < 140 && b.y > FIELD.GROUND_Y - 140 && Math.abs(b.vx) < 500
+  }
+  // Cue: el vinilo va hacia su portería y él está lejos de ella, por detrás de la jugada.
+  const towardOwnGoal = b.vx * -f
+  const farFromHome = Math.abs(p.x - ownGoalX) > 480
+  const ballBehind = Math.abs(b.x - ownGoalX) < Math.abs(p.x - ownGoalX)
+  return towardOwnGoal > 250 && farFromHome && ballBehind
+}
+
+/**
  * Lo que pulsa el rival en este frame. Hay que llamarla una vez por frame,
  * antes de `stepGame`, y pasarle el resultado como input de ese lado.
  */
@@ -191,6 +231,7 @@ export function stepAi(ai: AiState, s: GameState, side: Side, frameDt: number): 
   out.move = 0
   out.jump = false
   out.kick = false
+  out.power = false
   if (s.phase !== 'play') {
     // Tras cada gol empieza de cero: lo que pensaba ya no vale.
     ai.thinkT = 0
@@ -209,6 +250,10 @@ export function stepAi(ai: AiState, s: GameState, side: Side, frameDt: number): 
   if (ai.jumpCd > 0) ai.jumpCd -= dt
   ai.stillT = Math.abs(b.vx) + Math.abs(b.vy) < 60 ? ai.stillT + dt : 0
   if (ai.thinkT <= 0 || ai.targetX < 0) think(ai, s, side)
+
+  // La paciencia con el poder corre siempre, también en los despistes: si no,
+  // un nivel despistado se lo guardaba mucho más de lo que dice su ficha.
+  ai.powerT = p.power === null ? 0 : ai.powerT + dt
 
   if (ai.freezeT > 0) {
     ai.freezeT -= dt
@@ -252,6 +297,9 @@ export function stepAi(ai: AiState, s: GameState, side: Side, frameDt: number): 
       ai.jumpCd = 0.25 + rand(ai) * 0.35
     }
   }
+
+  /* --- Poder ------------------------------------------------------------ */
+  if (p.power !== null && (wantsPower(ai, s, side) || ai.powerT > L.powerPatience)) out.power = true
 
   /* --- Chutar ------------------------------------------------------------ */
   // Con el vinilo a tiro hay dos maneras de chutar, según el nivel: a lo

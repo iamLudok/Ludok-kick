@@ -31,6 +31,10 @@ export type StagePalette = {
   /** Carteles de remate a tiempo. */
   good: string
   perfect: string
+  /** Poderes: botón cargado, carteles y efectos. */
+  power: string
+  /** Tinte del jugador a cámara lenta (Low-pass). */
+  slow: string
 }
 
 export const PROTOTYPE_STAGE: StagePalette = {
@@ -56,4 +60,6 @@ export const PROTOTYPE_STAGE: StagePalette = {
   beatGlow: '#c9a8ff',
   good: '#7ce8ff',
   perfect: '#ffd84a',
+  power: '#ff5fd2',
+  slow: '#5fb8ff',
 }

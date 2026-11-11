@@ -21,6 +21,9 @@ export type ControlsLayout = {
   right: Point
   jump: Point
   kick: Point
+  /** El botón de poder, en el centro: algo más pequeño, se usa de vez en cuando. */
+  power: Point
+  powerR: number
 }
 
 /**
@@ -57,5 +60,7 @@ export function layoutControls(v: View, insetX: number): ControlsLayout {
     right: { x: margin + r * 3 + gap, y },
     kick: { x: v.sw - margin - r, y },
     jump: { x: v.sw - margin - r * 3 - gap, y },
+    power: { x: v.sw / 2, y },
+    powerR: r * 0.85,
   }
 }

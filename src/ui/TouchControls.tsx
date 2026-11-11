@@ -28,10 +28,19 @@ function readTouches(e: GestureTouchEvent, lifted: boolean, layout: ControlsLayo
   'worklet'
   const out: InputFrame = { move: 0, jump: false, kick: false, power: false }
   const padCenter = (layout.left.x + layout.right.x) / 2
+  const pr = layout.powerR * 1.3
   for (const t of e.allTouches) {
     // Al levantar un dedo, según la plataforma, `allTouches` todavía lo
     // incluye: se descarta a mano para que el botón no se quede pulsado.
     if (lifted && e.changedTouches.some((c) => c.id === t.id)) continue
+    // El botón de poder va en medio, justo donde se parten las dos mitades:
+    // se mira antes que nada, o un toque en él movería al jugador.
+    const px = t.x - layout.power.x
+    const py = t.y - layout.power.y
+    if (px * px + py * py < pr * pr) {
+      out.power = true
+      continue
+    }
     if (t.x < width / 2) {
       out.move = t.x < padCenter ? -1 : 1
     } else {

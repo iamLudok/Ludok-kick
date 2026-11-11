@@ -181,6 +181,13 @@ export const AI = {
      * mucho la cogían a contrapié y se comía contraataques (y goles en propia).
      */
     pressure: 0.2,
+    /**
+     * Con un poder listo: probabilidad, en cada decisión, de esperar al
+     * momento bueno para usarlo (si no, lo suelta cuando le parece), y tiempo
+     * máximo que lo guarda antes de gastarlo como sea.
+     */
+    powerIQ: 0.3,
+    powerPatience: 12,
   },
   /** Peak Time: un rival decente. */
   peak: {
@@ -194,6 +201,8 @@ export const AI = {
     kickSlop: 0.08,
     beatSkill: 0.4,
     pressure: 0.35,
+    powerIQ: 0.65,
+    powerPatience: 9,
   },
   /** Closing: reacciona rápido, falla poco y busca el beat casi siempre. */
   closing: {
@@ -207,6 +216,8 @@ export const AI = {
     kickSlop: 0.03,
     beatSkill: 0.8,
     pressure: 0.45,
+    powerIQ: 0.95,
+    powerPatience: 6,
   },
   /** Dónde espera cuando no va a por el vinilo: distancia a su propia pared. */
   HOME_X: 240,
@@ -220,6 +231,26 @@ export const AI = {
    * escapa por los pelos.
    */
   BEAT_AIM: 0.05,
+}
+
+/** Poderes de DJ y su barra de energía. */
+export const POWER = {
+  /** Energía por remate PERFECT (la barra va de 0 a 1): con 0,25 se llena con cuatro. */
+  PER_PERFECT: 0.25,
+  /** Scratch: el siguiente tiro gira su trayectoria a este ritmo (radianes por segundo) durante CURVE_TIME. */
+  CURVE_RATE: 1.9,
+  CURVE_TIME: 0.8,
+  /** Low-pass: el rival va a esta fracción de su velocidad durante este tiempo (segundos de verdad). */
+  SLOW_FACTOR: 0.45,
+  LOWPASS_TIME: 3,
+  /**
+   * Loop: el vinilo se queda flotando donde está durante LOOP_TIME. Si estaba
+   * por el suelo, sube hasta LOOP_HEIGHT (altura de su centro sobre el suelo),
+   * que es la de una volea: más arriba ya está a la altura de la cabeza (que
+   * es enorme) y al acercarse a chutar la cabeza lo apartaba antes que el pie.
+   */
+  LOOP_TIME: 1.5,
+  LOOP_HEIGHT: 45,
 }
 
 /** La onda expansiva del drop: cuánto lanza al que encajó el gol. */

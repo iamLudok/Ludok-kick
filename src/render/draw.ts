@@ -22,7 +22,7 @@ import {
 } from '@shopify/react-native-skia'
 import { BALL, FIELD, GOAL, KICK, PLAYER } from '../game/constants'
 import { kickAngle } from '../game/step'
-import type { GameState, InputFrame, Judge, PlayerState } from '../game/types'
+import type { GameState, InputFrame, Judge, PlayerState, PowerKind } from '../game/types'
 import { palette } from '../ui/theme'
 import type { StagePalette } from './stage'
 import { fitWorld, layoutControls, type ControlsLayout, type Point, type View } from './view'
@@ -30,7 +30,22 @@ import { fitWorld, layoutControls, type ControlsLayout, type Point, type View } 
 type Bounds = { x: number; y: number; width: number; height: number }
 
 /** Un cartel de PERFECT o GOOD flotando donde se tocó el vinilo. */
-export type Fx = { judge: Judge; x: number; y: number; age: number }
+/**
+ * Un cartel flotando: un remate a tiempo o un poder lanzado. `label` es el
+ * índice en LABELS: 0 GOOD, 1 PERFECT, 2–5 los poderes.
+ */
+export type Fx = { label: number; x: number; y: number; age: number }
+
+/** El cartel de cada juicio y de cada poder. */
+export function judgeLabel(judge: Judge): number {
+  'worklet'
+  return judge === 2 ? 1 : 0
+}
+
+export function powerLabel(kind: PowerKind): number {
+  'worklet'
+  return kind === 'scratch' ? 2 : kind === 'lowpass' ? 3 : kind === 'loop' ? 4 : 5
+}
 
 /** Segundos que dura un cartel en pantalla. */
 export const FX_LIFE = 0.75
@@ -91,12 +106,23 @@ export type Painter = {
   sideFill: SkPaint
   font: SkFont
   textOutline: SkPaint
-  textFill: [SkPaint, SkPaint]
+  textFill: SkPaint[]
   /** Ancho de cada cartel, para centrarlo. */
-  textWidth: [number, number]
+  textWidth: number[]
+  /** El botón de poder: anillo de energía, relleno cuando hay poder y el icono de cada uno. */
+  energyRing: SkPaint
+  powerFill: SkPaint
+  iconStroke: SkPaint
+  powerIcons: Record<PowerKind, SkPath>
+  /** Efectos de los poderes en marcha. */
+  slowTint: SkPaint
+  slowLine: SkPaint
+  scratchArc: SkPaint
+  curveGlow: SkPaint
+  loopArc: SkPaint
 }
 
-const LABELS: [string, string] = ['GOOD', 'PERFECT']
+const LABELS = ['GOOD', 'PERFECT', 'SCRATCH', 'LOW-PASS', 'LOOP', 'CUE']
 
 function fill(color: string): SkPaint {
   const p = Skia.Paint()
@@ -208,6 +234,40 @@ function recordBackground(v: View, st: StagePalette, bounds: Bounds): SkPicture 
   }, bounds)
 }
 
+/**
+ * Los iconos de los poderes, geométricos como los del resto de botones. Van
+ * de trazo: un filtro, una flecha en bucle… se leen mejor como líneas.
+ */
+function powerIcons(c: Point, r: number): Record<PowerKind, SkPath> {
+  const s = r * 0.42
+  // Scratch: el vaivén de la mano sobre el plato, un zigzag.
+  const scratch = Skia.Path.Make()
+  scratch.moveTo(c.x - s, c.y + s * 0.5)
+  scratch.lineTo(c.x - s * 0.35, c.y - s * 0.6)
+  scratch.lineTo(c.x + s * 0.2, c.y + s * 0.6)
+  scratch.lineTo(c.x + s, c.y - s * 0.5)
+  // Low-pass: la curva de un filtro, plana y luego cayendo.
+  const lowpass = Skia.Path.Make()
+  lowpass.moveTo(c.x - s, c.y - s * 0.35)
+  lowpass.lineTo(c.x + s * 0.1, c.y - s * 0.35)
+  lowpass.quadTo(c.x + s * 0.55, c.y - s * 0.35, c.x + s, c.y + s * 0.7)
+  // Loop: una vuelta casi entera con su punta de flecha.
+  const loop = Skia.Path.Make()
+  loop.addArc({ x: c.x - s * 0.8, y: c.y - s * 0.8, width: s * 1.6, height: s * 1.6 }, -60, 290)
+  loop.moveTo(c.x + s * 0.4, c.y - s * 1.05)
+  loop.lineTo(c.x + s * 0.45, c.y - s * 0.65)
+  loop.lineTo(c.x + s * 0.05, c.y - s * 0.55)
+  // Cue: volver al principio, una barra y un triángulo hacia ella.
+  const cue = Skia.Path.Make()
+  cue.moveTo(c.x - s * 0.7, c.y - s * 0.7)
+  cue.lineTo(c.x - s * 0.7, c.y + s * 0.7)
+  cue.moveTo(c.x + s * 0.7, c.y - s * 0.7)
+  cue.lineTo(c.x - s * 0.3, c.y)
+  cue.lineTo(c.x + s * 0.7, c.y + s * 0.7)
+  cue.close()
+  return { scratch, lowpass, loop, cue }
+}
+
 export function createPainter(sw: number, sh: number, insetX: number, st: StagePalette): Painter {
   const view = fitWorld(sw, sh, insetX)
   const controls = layoutControls(view, insetX)
@@ -267,8 +327,17 @@ export function createPainter(sw: number, sh: number, insetX: number, st: StageP
     sideFill: fill(st.side),
     font,
     textOutline,
-    textFill: [fill(st.good), fill(st.perfect)],
-    textWidth: [font.measureText(LABELS[0]).width, font.measureText(LABELS[1]).width],
+    textFill: LABELS.map((_, i) => fill(i === 0 ? st.good : i === 1 ? st.perfect : st.power)),
+    textWidth: LABELS.map((l) => font.measureText(l).width),
+    energyRing: stroke(st.power, 5),
+    powerFill: fill(st.power),
+    iconStroke: stroke(palette.fg, Math.max(3, controls.powerR * 0.12)),
+    powerIcons: powerIcons(controls.power, controls.powerR),
+    slowTint: fill(st.slow),
+    slowLine: stroke(st.slow, 3),
+    scratchArc: stroke(st.power, 4),
+    curveGlow: stroke(st.power, 4),
+    loopArc: stroke(st.beatGlow, 3),
   }
 }
 
@@ -409,11 +478,15 @@ function drawFx(canvas: SkCanvas, k: Painter, fx: Fx): void {
   'worklet'
   const t = fx.age / FX_LIFE
   const fade = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4
-  const i = fx.judge === 2 ? 1 : 0
+  const i = fx.label
 
-  if (fx.judge === 2) {
+  if (i === 1) {
     k.burst.setAlphaf(1 - t)
     canvas.drawCircle(fx.x, fx.y, BALL.R + 70 * t, k.burst)
+  } else if (i >= 2) {
+    // Un poder: un anillo más grande, del color de los poderes.
+    k.curveGlow.setAlphaf(1 - t)
+    canvas.drawCircle(fx.x, fx.y, PLAYER.HEAD_R + 90 * t, k.curveGlow)
   }
   // Sale un poco grande y se asienta: se nota más que si apareciera ya quieto.
   const pop = 1 + 0.5 * Math.max(0, 1 - fx.age / 0.12)
@@ -429,6 +502,73 @@ function drawFx(canvas: SkCanvas, k: Painter, fx: Fx): void {
   canvas.drawText(LABELS[i], -k.textWidth[i] / 2, 0, k.textOutline, k.font)
   canvas.drawText(LABELS[i], -k.textWidth[i] / 2, 0, k.textFill[i], k.font)
   canvas.restore()
+}
+
+/** Lo que se ve de los poderes en marcha, encima del jugador y del vinilo. */
+function drawPowerEffects(canvas: SkCanvas, k: Painter, s: GameState, ahead: number, bx: number, by: number): void {
+  'worklet'
+  const spin = s.tick / 120
+  for (let i = 0; i < 2; i++) {
+    const p = s.players[i]
+    const x = p.x + p.vx * ahead
+    const cy = Math.min(p.y + p.vy * ahead, FIELD.GROUND_Y) - PLAYER.HEAD_CY
+    if (p.slowT > 0) {
+      // Low-pass: tinte frío y unas líneas de estela, como a cámara lenta.
+      k.slowTint.setAlphaf(0.32)
+      canvas.drawCircle(x, cy, PLAYER.HEAD_R + 2, k.slowTint)
+      k.slowLine.setAlphaf(0.6)
+      for (let j = 0; j < 3; j++) {
+        const ly = cy - 18 + j * 18
+        const back = -p.facing
+        canvas.drawLine(x + back * (PLAYER.HEAD_R + 8), ly, x + back * (PLAYER.HEAD_R + 30), ly, k.slowLine)
+      }
+    }
+    if (p.scratch) {
+      // Scratch preparado: dos arcos girando alrededor de la cabeza.
+      const r = PLAYER.HEAD_R + 9
+      const a = (spin * 540) % 360
+      const box = { x: x - r, y: cy - r, width: r * 2, height: r * 2 }
+      canvas.drawArc(box, a, 70, false, k.scratchArc)
+      canvas.drawArc(box, a + 180, 70, false, k.scratchArc)
+    }
+  }
+  const b = s.ball
+  if (b.curveT > 0) {
+    k.curveGlow.setAlphaf(0.85)
+    canvas.drawCircle(bx, by, BALL.R + 6, k.curveGlow)
+  }
+  if (b.loopT > 0) {
+    // Loop: tres arcos girando alrededor del vinilo quieto.
+    const r = BALL.R + 10
+    const a = (spin * 360) % 360
+    const box = { x: bx - r, y: by - r, width: r * 2, height: r * 2 }
+    for (let j = 0; j < 3; j++) canvas.drawArc(box, a + j * 120, 60, false, k.loopArc)
+  }
+}
+
+/**
+ * El botón de poder: sin poder, un círculo apagado con un anillo que se va
+ * llenando con la energía; con poder, se enciende y enseña cuál es.
+ */
+function drawPowerButton(canvas: SkCanvas, k: Painter, p: PlayerState, pressed: boolean, tick: number): void {
+  'worklet'
+  const c = k.controls.power
+  const r = k.controls.powerR
+  if (p.power === null) {
+    canvas.drawCircle(c.x, c.y, r, k.button)
+    canvas.drawCircle(c.x, c.y, r, k.buttonRing)
+    if (p.energy > 0) {
+      k.energyRing.setAlphaf(0.9)
+      canvas.drawArc({ x: c.x - r, y: c.y - r, width: r * 2, height: r * 2 }, -90, 360 * p.energy, false, k.energyRing)
+    }
+    return
+  }
+  // Late un poco para llamar la atención: hay algo listo para usar.
+  const beat = 1 + 0.06 * Math.sin(tick / 16)
+  k.powerFill.setAlphaf(pressed ? 0.6 : 1)
+  canvas.drawCircle(c.x, c.y, r * beat, k.powerFill)
+  canvas.drawCircle(c.x, c.y, r * beat, k.buttonRing)
+  canvas.drawPath(k.powerIcons[p.power], k.iconStroke)
 }
 
 function drawButton(canvas: SkCanvas, k: Painter, at: Point, icon: SkPath, pressed: boolean): void {
@@ -497,6 +637,7 @@ export function drawFrame(
   drawPlayer(canvas, k, s.players[1], ahead, bx, by)
   drawPlayer(canvas, k, s.players[0], ahead, bx, by)
   drawVinyl(canvas, k, bx, by, b.angle + b.spin * ahead)
+  drawPowerEffects(canvas, k, s, ahead, bx, by)
   for (let i = 0; i < beat.fx.length; i++) drawFx(canvas, k, beat.fx[i])
 
   if (shock.age >= 0 && shock.age < SHOCK_LIFE) {
@@ -528,5 +669,6 @@ export function drawFrame(
     drawButton(canvas, k, c.right, k.icons.right, touch.move > 0)
     drawButton(canvas, k, c.jump, k.icons.jump, touch.jump)
     drawButton(canvas, k, c.kick, k.icons.kick, touch.kick)
+    drawPowerButton(canvas, k, s.players[0], touch.power, s.tick)
   }
 }
