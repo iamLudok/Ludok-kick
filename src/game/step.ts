@@ -12,7 +12,7 @@
 import { beatDelta, judgeDelta, judgePower } from './beat'
 import { BALL, BODY, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, POWER, SHOCK, SIM } from './constants'
 import { nextRandom } from './rng'
-import { emptyInput, resetForKickoff, startX } from './state'
+import { emptyInput, resetForKickoff } from './state'
 import { POWER_KINDS, type Contact, type GameState, type InputFrame, type Judge, type PlayerState, type Side } from './types'
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -86,6 +86,18 @@ function roofYAt(dist: number): number {
 
 /* --- Jugadores ----------------------------------------------------------- */
 
+/** El radio de la cabeza: más grande bajo la Cabeza gigante. */
+export function headR(p: PlayerState): number {
+  'worklet'
+  return p.bigT > 0 ? PLAYER.HEAD_R * POWER.BIG_SCALE : PLAYER.HEAD_R
+}
+
+/** Cuánta gravedad hay ahora: menos con la Luna. */
+function worldGravity(s: GameState): number {
+  'worklet'
+  return s.moonT > 0 ? POWER.MOON_GRAVITY : 1
+}
+
 /** Ángulo de la pierna que chuta: 0 en reposo. Lo usan la física y el dibujo. */
 export function kickAngle(p: PlayerState): number {
   'worklet'
@@ -112,17 +124,27 @@ function clampPlayerX(p: PlayerState): boolean {
 
 function updatePlayer(s: GameState, p: PlayerState, inp: InputFrame, dt: number): void {
   'worklet'
-  const target = clamp(inp.move, -1, 1) * PLAYER.SPEED * p.stats.speed
+  // Bufón del rival: izquierda y derecha, al revés.
+  const move = p.invertT > 0 ? -inp.move : inp.move
+  const target = clamp(move, -1, 1) * PLAYER.SPEED * p.stats.speed
   p.vx = approach(p.vx, target, (p.grounded ? PLAYER.ACCEL : PLAYER.AIR_ACCEL) * dt)
 
+  const jumpV = PLAYER.JUMP_V * p.stats.jump * (p.hypeT > 0 ? POWER.HYPE_JUMP : 1)
   // Con el botón mantenido vuelve a saltar nada más aterrizar: así no hay que
   // acertar el instante exacto del toque para encadenar saltos.
   if (inp.jump && p.grounded) {
-    p.vy = -PLAYER.JUMP_V * p.stats.jump
+    p.vy = -jumpV
     p.grounded = false
+    p.wingJump = p.wingsT > 0
+  } else if (inp.jump && p.wingJump && p.vy > 0) {
+    // Alas: un segundo salto en el aire, ya cayendo.
+    p.vy = -jumpV * 0.85
+    p.wingJump = false
   }
 
-  p.vy += PLAYER.GRAVITY * dt
+  // Con Alas, al caer planea.
+  const glide = p.wingsT > 0 && p.vy > 0 ? POWER.WINGS_GRAVITY : 1
+  p.vy += PLAYER.GRAVITY * worldGravity(s) * glide * dt
   p.x += p.vx * dt
   p.y += p.vy * dt
 
@@ -131,7 +153,7 @@ function updatePlayer(s: GameState, p: PlayerState, inp: InputFrame, dt: number)
   if (!p.grounded) {
     const c = s.contact
     for (let side = 0; side < 2; side++) {
-      if (circleVsRoof(side as Side, p.x, p.y - PLAYER.HEAD_CY, PLAYER.HEAD_R, c)) {
+      if (circleVsRoof(side as Side, p.x, p.y - PLAYER.HEAD_CY, headR(p), c)) {
         p.x += c.nx * c.pen
         p.y += c.ny * c.pen
         if (c.ny > 0.3 && p.vy < 0) p.vy = 0
@@ -169,7 +191,7 @@ function updatePlayer(s: GameState, p: PlayerState, inp: InputFrame, dt: number)
  */
 function separatePlayers(a: PlayerState, b: PlayerState): void {
   'worklet'
-  const rr = PLAYER.HEAD_R * 2
+  const rr = headR(a) + headR(b)
   const dy = a.y - b.y
   if (Math.abs(dy) >= rr * 0.92) return
   const need = Math.sqrt(rr * rr - dy * dy)
@@ -209,6 +231,14 @@ function ballVsWorld(s: GameState): void {
   const b = s.ball
   const R = BALL.R
 
+  // Muro: un bafle de pie en la línea de gol, de suelo a larguero.
+  if (s.wallT > 0) {
+    const lineX = s.wallSide === 0 ? GOAL.DEPTH : FIELD.W - GOAL.DEPTH
+    if (circleVsSegment(b.x, b.y, R, lineX, FIELD.GROUND_Y - GOAL.HEIGHT, lineX, FIELD.GROUND_Y, 10, s.contact)) {
+      bounceBall(s, 0.7)
+    }
+  }
+
   // El techo de las porterías va primero y los límites del campo después: así,
   // en la esquina donde se juntan, manda la pared. Al revés, el techo sacaba
   // el vinilo del campo a través de ella.
@@ -226,7 +256,7 @@ function ballVsWorld(s: GameState): void {
         // El efecto se acaba al tocar el suelo: girando también después del
         // bote, el vinilo se enroscaba por el suelo de forma muy rara.
         b.curveT = 0
-        b.vy = -b.vy * BALL.BOUNCE_GROUND
+        b.vy = -b.vy * (b.cloudT > 0 ? POWER.CLOUD_BOUNCE : BALL.BOUNCE_GROUND)
         b.vx *= BALL.GROUND_GRIP
       }
     }
@@ -293,6 +323,7 @@ function ballVsCircle(
 /** Fracción de su velocidad a la que va un jugador: menos de 1 bajo un Low-pass. */
 function pace(p: PlayerState): number {
   'worklet'
+  if (p.frozenT > 0) return 0
   return p.slowT > 0 ? POWER.SLOW_FACTOR : 1
 }
 
@@ -310,7 +341,16 @@ function onTouch(s: GameState, p: PlayerState, judge: Judge): void {
     b.curveT = POWER.CURVE_TIME
     b.curveDir = p.facing
   }
-  if (judge === 2 && p.power === null) {
+  if (p.laser) {
+    // Rayo: el tiro sale recto hacia la portería rival, rapidísimo y sin caer.
+    p.laser = false
+    b.vx = p.facing * POWER.LASER_SPEED
+    b.vy = 0
+    b.laserT = POWER.LASER_TIME
+    b.curveT = 0
+  }
+  // Bajo un Apagón del rival no se carga energía.
+  if (judge === 2 && p.power === null && p.blackoutT <= 0) {
     p.energy = Math.min(1, p.energy + POWER.PER_PERFECT)
     if (p.energy >= 1) {
       // El poder propio del DJ, o uno al azar si no tiene (o si se juega así).
@@ -324,28 +364,68 @@ function onTouch(s: GameState, p: PlayerState, judge: Judge): void {
 function usePower(s: GameState, p: PlayerState): void {
   'worklet'
   const kind = p.power
-  if (kind === null) return
+  if (kind === null || p.blackoutT > 0) return
+  const rival = s.players[p.side === 0 ? 1 : 0]
+  const b = s.ball
   const fromX = p.x
   const fromY = p.y - PLAYER.HEAD_CY
   p.power = null
   p.energy = 0
   if (kind === 'scratch') {
     p.scratch = true
+  } else if (kind === 'laser') {
+    p.laser = true
   } else if (kind === 'lowpass') {
-    s.players[p.side === 0 ? 1 : 0].slowT = POWER.LOWPASS_TIME
+    rival.slowT = POWER.LOWPASS_TIME
+  } else if (kind === 'robot') {
+    rival.frozenT = POWER.ROBOT_TIME
+    rival.vx = 0
+    rival.kickT = -1
+  } else if (kind === 'jester') {
+    rival.invertT = POWER.JESTER_TIME
+  } else if (kind === 'blackout') {
+    // Apagón: el rival pierde lo que tuviera cargado y se queda sin poder cargar.
+    rival.blackoutT = POWER.BLACKOUT_TIME
+    rival.energy = 0
+    rival.power = null
   } else if (kind === 'loop') {
-    const b = s.ball
     b.loopT = POWER.LOOP_TIME
     b.curveT = 0
+    b.laserT = 0
+  } else if (kind === 'cloud') {
+    b.cloudT = POWER.CLOUD_TIME
+  } else if (kind === 'hype') {
+    p.hypeT = POWER.HYPE_TIME
+  } else if (kind === 'bighead') {
+    p.bigT = POWER.BIG_TIME
+  } else if (kind === 'wings') {
+    p.wingsT = POWER.WINGS_TIME
+    p.wingJump = !p.grounded
+  } else if (kind === 'moon') {
+    s.moonT = POWER.MOON_TIME
+  } else if (kind === 'wall') {
+    s.wallT = POWER.WALL_TIME
+    s.wallSide = p.side
   } else {
-    // Cue: de vuelta al punto de partida, quieto y con el pie recogido.
-    p.x = startX(p.side)
-    p.y = FIELD.GROUND_Y
-    p.vx = 0
-    p.vy = 0
-    p.grounded = true
-    p.kickT = -1
-    p.recoverT = POWER.CUE_RECOVER
+    // Bombo: pisotón con onda. Lanza al rival y despeja el vinilo, si están cerca.
+    for (const target of [rival]) {
+      const dx = target.x - p.x
+      if (Math.abs(dx) < POWER.STOMP_RADIUS) {
+        target.vx = (dx !== 0 ? Math.sign(dx) : p.facing) * POWER.STOMP_PUSH
+        target.vy = -POWER.STOMP_PUSH * 0.6
+        target.grounded = false
+      }
+    }
+    const bx = b.x - p.x
+    const by = b.y - (p.y - PLAYER.HEAD_CY)
+    const dist = Math.sqrt(bx * bx + by * by)
+    if (dist < POWER.STOMP_RADIUS) {
+      // El vinilo siempre sale hacia la portería rival: «alejarlo de ti», con
+      // el vinilo a la espalda, era mandarlo a tu propia portería.
+      b.loopT = 0
+      b.vx = p.facing * POWER.STOMP_PUSH
+      b.vy = -POWER.STOMP_PUSH * 0.5
+    }
   }
   s.events.push({ type: 'power', side: p.side, kind, x: fromX, y: fromY })
 }
@@ -394,7 +474,7 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
     s,
     p.x,
     p.y - PLAYER.HEAD_CY,
-    PLAYER.HEAD_R,
+    headR(p),
     pvx,
     pvy,
     HEADER.RESTITUTION,
@@ -418,7 +498,7 @@ function overlapWithPlayer(s: GameState, p: PlayerState): number {
   const b = s.ball
   const hx = b.x - p.x
   const hy = b.y - (p.y - PLAYER.HEAD_CY)
-  const head = PLAYER.HEAD_R + BALL.R - Math.sqrt(hx * hx + hy * hy)
+  const head = headR(p) + BALL.R - Math.sqrt(hx * hx + hy * hy)
   const by = b.y - (p.y - PLAYER.BODY_R)
   const body = PLAYER.BODY_R + BALL.R - Math.sqrt(hx * hx + by * by)
   return Math.max(head, body)
@@ -452,7 +532,7 @@ function unstickBall(s: GameState): void {
   const p = o0 > o1 ? p0 : p1
   const overlap = Math.max(o0, o1)
   const onGround = b.y + BALL.R >= FIELD.GROUND_Y - 0.5
-  const under = b.y > p.y - PLAYER.HEAD_CY + PLAYER.HEAD_R * 0.5
+  const under = b.y > p.y - PLAYER.HEAD_CY + headR(p) * 0.5
   if (onGround && under) {
     const x = b.x + (b.x >= p.x ? 1 : -1) * overlap
     if (x >= BALL.R && x <= FIELD.W - BALL.R) {
@@ -505,8 +585,15 @@ function updateBall(s: GameState, dt: number, realDt: number): void {
     b.vx = vx
   }
 
-  b.vy += BALL.GRAVITY * dt
-  const drag = 1 - BALL.AIR_DRAG * dt
+  if (b.laserT > 0) {
+    // Rayo: recto, sin gravedad ni rozamiento, hasta que choque o se acabe.
+    b.laserT -= realDt
+  } else {
+    const light = b.cloudT > 0 ? POWER.CLOUD_GRAVITY : 1
+    b.vy += BALL.GRAVITY * worldGravity(s) * light * dt
+  }
+  if (b.cloudT > 0) b.cloudT -= realDt
+  const drag = b.laserT > 0 ? 1 : 1 - BALL.AIR_DRAG * dt
   b.vx *= drag
   b.vy *= drag
   // Apoyado en el suelo, rueda y se va frenando.
@@ -530,6 +617,10 @@ function updateBall(s: GameState, dt: number, realDt: number): void {
     ballVsWorld(s)
   }
   unstickBall(s)
+
+  // El Rayo se acaba en cuanto choca con algo: cualquier choque le cambia la
+  // velocidad, que hasta entonces era exactamente horizontal y la del Rayo.
+  if (b.laserT > 0 && (b.vy !== 0 || Math.abs(b.vx) < POWER.LASER_SPEED * 0.99)) b.laserT = 0
 
   const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy)
   if (speed > BALL.MAX_SPEED) {
@@ -614,18 +705,26 @@ function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number, realDt
   const live = s.phase === 'play'
   for (let i = 0; i < 2; i++) {
     const p = s.players[i]
-    // Recién llegado de un Cue no responde a los botones durante un instante.
-    if (p.recoverT > 0) p.recoverT -= realDt
-    const inp = live && p.recoverT <= 0 ? (i === 0 ? in0 : in1) : IDLE
+    const inp = live ? (i === 0 ? in0 : in1) : IDLE
     // El poder se lanza al pulsar, no mientras se mantiene el botón.
     if (inp.power && !p.powerHeld) usePower(s, p)
     p.powerHeld = inp.power
     // Bajo un Low-pass, todo lo suyo va a cámara lenta: correr, saltar, chutar.
-    updatePlayer(s, p, inp, dt * pace(p))
+    // Congelado (Modo robot del rival): ni botones ni movimiento, solo cae.
+    updatePlayer(s, p, p.frozenT > 0 ? IDLE : inp, dt * Math.max(pace(p), p.frozenT > 0 ? 1 : 0))
+    if (p.frozenT > 0) p.vx = 0
     if (p.slowT > 0) p.slowT -= realDt
+    if (p.frozenT > 0) p.frozenT -= realDt
+    if (p.hypeT > 0) p.hypeT -= realDt
+    if (p.bigT > 0) p.bigT -= realDt
+    if (p.wingsT > 0) p.wingsT -= realDt
+    if (p.invertT > 0) p.invertT -= realDt
+    if (p.blackoutT > 0) p.blackoutT -= realDt
   }
   separatePlayers(s.players[0], s.players[1])
   updateBall(s, dt, realDt)
+  if (s.moonT > 0) s.moonT -= realDt
+  if (s.wallT > 0) s.wallT -= realDt
 
   if (live) {
     checkGoal(s)

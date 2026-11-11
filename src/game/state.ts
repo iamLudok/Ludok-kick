@@ -35,7 +35,14 @@ function createPlayer(side: Side, stats: PlayerStats): PlayerState {
     powerHeld: false,
     scratch: false,
     slowT: 0,
-    recoverT: 0,
+    frozenT: 0,
+    hypeT: 0,
+    bigT: 0,
+    wingsT: 0,
+    wingJump: false,
+    invertT: 0,
+    blackoutT: 0,
+    laser: false,
   }
 }
 
@@ -54,7 +61,7 @@ export function createInitialState(stats0?: PlayerStats, stats1?: PlayerStats, s
     golden: false,
     score: [0, 0],
     players: [createPlayer(0, a), createPlayer(1, b)],
-    ball: { x: FIELD.W / 2, y: BALL.DROP_Y, vx: 0, vy: 0, angle: 0, spin: 0, curveT: 0, curveDir: 1, loopT: 0 },
+    ball: { x: FIELD.W / 2, y: BALL.DROP_Y, vx: 0, vy: 0, angle: 0, spin: 0, curveT: 0, curveDir: 1, loopT: 0, cloudT: 0, laserT: 0 },
     acc: 0,
     tick: 0,
     events: [],
@@ -62,6 +69,9 @@ export function createInitialState(stats0?: PlayerStats, stats1?: PlayerStats, s
     beat: { on: false, now: 0, t0: 0, bpm: BEAT.REFERENCE_BPM, dropAt: -1 },
     scorer: 0,
     seed: seed | 0,
+    moonT: 0,
+    wallT: 0,
+    wallSide: 0,
   }
 }
 
@@ -81,9 +91,18 @@ export function resetForKickoff(s: GameState): void {
     // La energía, el poder guardado y un Scratch preparado se conservan de un
     // saque a otro: se pagaron con remates y no deben perderse por un gol. La
     // cámara lenta, en cambio, se corta: el saque empieza limpio.
+    // Lo que estaba en marcha se corta: el saque empieza limpio. Lo preparado
+    // (un Scratch, un Rayo) se guarda: se pagó y no debe perderse por un gol.
     p.slowT = 0
-    p.recoverT = 0
+    p.frozenT = 0
+    p.hypeT = 0
+    p.bigT = 0
+    p.wingsT = 0
+    p.invertT = 0
+    p.blackoutT = 0
   }
+  s.moonT = 0
+  s.wallT = 0
   const b = s.ball
   b.x = FIELD.W / 2
   b.y = BALL.DROP_Y
@@ -92,6 +111,8 @@ export function resetForKickoff(s: GameState): void {
   b.spin = 0
   b.curveT = 0
   b.loopT = 0
+  b.cloudT = 0
+  b.laserT = 0
   s.phase = 'kickoff'
   s.phaseT = MATCH.KICKOFF_DELAY
 }

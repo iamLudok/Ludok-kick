@@ -38,7 +38,9 @@ const DT = 1 / 60
 
 /** Un partido entero a 60 Hz con música a 120 BPM. `null` es un rival que no se mueve. */
 function play(l0: Level | null, l1: Level | null, seed: number): Result {
-  const s: GameState = createInitialState()
+  // Cada partido, su semilla: con la misma, a la IA le tocaban siempre las
+  // mismas habilidades en el mismo orden y la prueba medía esa casualidad.
+  const s: GameState = createInitialState(undefined, undefined, seed + 1)
   const ai: [AiState | null, AiState | null] = [l0 ? createAi(l0, seed * 7 + 1) : null, l1 ? createAi(l1, seed * 13 + 5) : null]
   const idle = emptyInput()
   const r: Result = { score: [0, 0], ended: false, kicks: [0, 0], perfectKicks: [0, 0], longestIdle: 0, powers: [0, 0], longestHeld: 0 }
@@ -156,7 +158,7 @@ for (const level of LEVELS) {
     longest = Math.max(longest, r.longestHeld)
   }
   check(`${level}: usa sus poderes`, used >= N, `${used} en ${N} partidos`)
-  // Un poco más que su paciencia: el Cue solo lo gasta si tiene sentido.
+  // Un poco más que su paciencia: lo que tarde en salir de un despiste.
   check(`${level}: no se los guarda para siempre`, longest <= AI[level].powerPatience + 1, `máximo ${longest.toFixed(1)} s guardado`)
 }
 

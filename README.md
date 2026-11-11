@@ -20,7 +20,7 @@ siguiente.
 | 5 | Poderes de DJ y barra de energía | Hecha |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Hecha |
 | 7 | Pulido: partículas, focos al ritmo, sonidos de interfaz, icono y splash | Hecha |
-| 8 | 14 DJs homenaje con su propia música, y misiones para desbloquearlos | Hecha |
+| 8 | 14 DJs con su música y su habilidad, misiones para desbloquearlos y pantalla VS | Hecha |
 
 ## Cómo se juega
 
@@ -46,27 +46,26 @@ siguiente.
 
 ## Los DJs
 
-Catorce caricaturas que homenajean a DJs conocidos, con nombres guiño (no se usan sus nombres
-ni su imagen reales, así que el APK se puede compartir). Cada uno pone su género, tiene un
-pequeño matiz de juego y un poder propio. Se empieza con DJ Ludok; el resto se desbloquea con
+Catorce caricaturas con nombres guiño a DJs conocidos (no se nombra a nadie, así que el APK se
+puede compartir). Cada uno pone su género, tiene un pequeño matiz de juego y su habilidad propia. Se empieza con DJ Ludok; el resto se desbloquea con
 misiones.
 
-| DJ | Homenaje a | Música | Ventaja | Poder | Se desbloquea… |
-|---|---|---|---|---|---|
-| **DJ Ludok** | la mascota de la casa | House · 124 | — | Scratch | desde el principio |
-| **Karl Box** | Carl Cox | Techno · 130 | Tiro más fuerte | Low-pass | ganando tu primer partido |
-| **Dabid Getta** | David Guetta | EDM · 128 | Salta más | Loop | metiendo 6 PERFECT en un partido |
-| **Daft Funk** | Daft Punk | French house · 124 | PERFECT más amplio | Cue | ganando en Peak Time o Closing |
-| **Deadmouse** | deadmau5 | Progressive · 128 | Más rápido | Scratch | ganando sin encajar |
-| **Marsmelou** | Marshmello | Future bounce · 128 | Salta más | Cue | lanzando 3 poderes en un partido |
-| **Carlota de Whitte** | Charlotte de Witte | Techno oscuro · 136 | Tiro más fuerte | Loop | ganando en los 3 escenarios |
-| **Ameli Lenz** | Amelie Lens | Techno · 140 | Más rápido | Low-pass | ganando con gol de oro |
-| **Arnim Ban Buren** | Armin van Buuren | Trance · 138 | Salta más | Scratch | encadenando 5 PERFECT |
-| **Ritxie Hautin** | Richie Hawtin | Minimal · 125 | PERFECT más amplio | Loop | ganando 3 partidos seguidos |
-| **Solomoon** | Solomun | Melodic techno · 122 | PERFECT más amplio | Low-pass | ganando en Closing |
-| **Klaptone** | Claptone | Deep house · 122 | Más rápido | Cue | con 10 victorias |
-| **Boris Brejtxa** | Boris Brejcha | High-tech minimal · 126 | PERFECT y tiro | Scratch | ganando en Closing por 3 goles |
-| **I Hate Modems** | I Hate Models | Techno industrial · 145 | Tiro y velocidad | Low-pass | completando todas las demás |
+| DJ | Música | Ventaja | Habilidad | Se desbloquea… |
+|---|---|---|---|---|
+| **DJ Ludok** | House · 124 | Tiro algo más fuerte | Scratch | desde el principio |
+| **Karl Box** | Techno · 130 | Tiro más fuerte | Bombo | ganando tu primer partido |
+| **Dabid Getta** | EDM · 128 | Salta más | Manos arriba | metiendo 6 PERFECT en un partido |
+| **Daft Funk** | French house · 124 | PERFECT más amplio | Modo robot | ganando en Peak Time o Closing |
+| **Deadmouse** | Progressive · 128 | Más rápido | Cabeza gigante | ganando sin encajar |
+| **Marsmelou** | Future bounce · 128 | Salta más | Nube | lanzando 3 poderes en un partido |
+| **Carlota de Whitte** | Techno oscuro · 136 | Tiro más fuerte | Muro | ganando en los 3 escenarios |
+| **Ameli Lenz** | Techno · 140 | Más rápido | Rayo | ganando con gol de oro |
+| **Arnim Ban Buren** | Trance · 138 | Salta más | Low-pass | encadenando 5 PERFECT |
+| **Ritxie Hautin** | Minimal · 125 | PERFECT más amplio | Loop | ganando 3 partidos seguidos |
+| **Solomoon** | Melodic techno · 122 | PERFECT más amplio | Luna | ganando en Closing |
+| **Klaptone** | Deep house · 122 | Más rápido | Alas | con 10 victorias |
+| **Boris Brejtxa** | High-tech minimal · 126 | PERFECT más amplio | Bufón | ganando en Closing por 3 goles |
+| **I Hate Modems** | Techno industrial · 145 | Tiro y velocidad | Apagón | completando todas las demás |
 
 Las misiones no se guardan aparte: se calculan a partir del historial de partidos. Así no hay
 dos cosas que puedan descuadrarse, y la copia de seguridad se lleva también el progreso. Los
@@ -91,18 +90,28 @@ código.
 ## Poderes de DJ
 
 Cada remate PERFECT llena un cuarto de la barra de energía (el anillo del botón central y la
-barra junto a tu marcador). Llena, te toca el poder de tu DJ, que aparece en el botón; se lanza
-al pulsarlo.
+barra junto a tu marcador). Llena, tienes lista la habilidad de tu DJ, que aparece en el botón;
+se lanza al pulsarlo.
 
-| Poder | Qué hace |
+| Habilidad | Qué hace |
 |---|---|
-| **Scratch** | Tu siguiente tiro, de pie o de cabeza, lleva un efecto que lo hunde hacia la portería. Se queda preparado hasta que tocas el vinilo, aunque haya un gol por medio |
-| **Low-pass** | El rival va a cámara lenta durante 3 s y la música se amortigua, menos el bombo, para que el beat se siga oyendo |
-| **Loop** | El vinilo se queda flotando 1,5 s donde esté; si iba por el suelo, sube a altura de volea. Tocarlo rompe el loop |
-| **Cue** | Vuelves al instante a tu posición de saque (con 0,2 s para recolocarte antes de poder moverte) |
+| **Scratch** | Tu siguiente tiro lleva un efecto que lo hunde hacia la portería |
+| **Bombo** | Pisotón con onda: lanza al rival y despeja el vinilo hacia la portería contraria |
+| **Manos arriba** | Saltas muchísimo más durante 5 s |
+| **Modo robot** | El rival se queda congelado 1,5 s |
+| **Cabeza gigante** | Tu cabeza crece durante 5 s |
+| **Nube** | El vinilo se vuelve ligero y botón durante 5 s |
+| **Muro** | Un bafle tapa tu portería durante 4 s |
+| **Rayo** | Tu siguiente tiro sale recto y rapidísimo, sin caer |
+| **Low-pass** | El rival a cámara lenta 3 s, y la música amortiguada menos el bombo |
+| **Loop** | El vinilo se queda flotando 1,5 s; si iba por el suelo, sube a altura de volea |
+| **Luna** | Gravedad baja para todos durante 5 s |
+| **Alas** | Planeas al caer y tienes un salto en el aire, durante 5 s |
+| **Bufón** | Al rival se le cambian izquierda y derecha 3 s (a la IA también la lía) |
+| **Apagón** | El rival pierde lo que tuviera cargado y se queda 6 s sin cargar ni lanzar nada |
 
 La IA también carga energía con sus PERFECT y usa sus poderes: los niveles altos esperan al
-momento bueno (el Cue para volver a defender, el Loop con el vinilo delante, el Low-pass en
+momento bueno (el Muro con un tiro yendo a su portería, el Loop con el vinilo delante, el Low-pass en
 plena disputa); los bajos los sueltan cuando sea.
 
 ## El rival
@@ -191,7 +200,7 @@ Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre e
 |---|---|
 | `verify/physics.ts` | Que el vinilo no se sale del campo ni se queda atrapado, que los goles se cuentan en el lado correcto, que el reloj acaba el partido o da paso al gol de oro, que ningún lado tiene ventaja y que el resultado es el mismo a 60 que a 120 Hz |
 | `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca, que el tiro sale con su potencia, que el tempo sube y encoge las ventanas, y que el drop cae cuando dice la música |
-| `verify/powers.ts` | La barra de energía (solo la llenan los PERFECT) y cada poder: que se lanza una vez por pulsación, que el Scratch hunde el tiro, que el Low-pass ralentiza solo al rival y se pasa, que el Loop deja el vinilo a tiro y se rompe al tocarlo, y que el Cue te devuelve a tu sitio |
+| `verify/powers.ts` | La barra de energía (solo la llenan los PERFECT) y las 14 habilidades, una por una: que se lanzan una vez por pulsación y que cada una hace lo que dice (el Muro para un tiro que era gol, la Cabeza gigante remata lo que la normal no alcanza, el Rayo no cae…) |
 | `verify/characters.ts` | Que cada DJ tiene su ventaja y su poder, que ninguno gana o pierde casi siempre (la IA contra sí misma con cada pareja de DJs), que todas las bases dejan el bombo en las negras y que lo que llega por la ruta se lee bien aunque venga roto |
 | `verify/missions.ts` | Cada misión contra historiales inventados: que se cumple justo cuando debe y no antes, que el orden de los partidos solo importa donde tiene que importar, y que un partido puede desbloquear varios DJs a la vez |
 | `verify/sequencer.ts` | La música, con un motor de audio de mentira que apunta qué se programa: bombos en los beats, tempo que cambia solo entre compases, drop en un beat y sin bombo ni bajo durante la subida |

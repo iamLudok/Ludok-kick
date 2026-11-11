@@ -7,7 +7,7 @@ import { getStage } from '../content/stages'
 import { useLevelTallies } from '../hooks/useHistory'
 import { DjPortrait } from './Art'
 import { Button } from './Button'
-import { LEVEL_NAME } from './labels'
+import { LEVEL_NAME, djNameColor } from './labels'
 import { Txt } from './Text'
 import { palette, radius, space } from './theme'
 
@@ -41,7 +41,7 @@ export function ResultScreen() {
       <View style={styles.scoreRow}>
         <View style={styles.side}>
           <DjPortrait dj={me} size={92} />
-          <Txt variant="label" style={{ color: me.look.jersey }}>
+          <Txt variant="label" style={{ color: djNameColor(me.look.jersey, palette.fg) }}>
             {me.name}
           </Txt>
         </View>
@@ -50,7 +50,7 @@ export function ResultScreen() {
         </Txt>
         <View style={styles.side}>
           <DjPortrait dj={rival} size={92} flip />
-          <Txt variant="label" style={{ color: rival.look.jersey }}>
+          <Txt variant="label" style={{ color: djNameColor(rival.look.jersey, palette.fg) }}>
             {rival.name}
           </Txt>
         </View>

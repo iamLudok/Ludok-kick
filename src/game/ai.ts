@@ -190,7 +190,7 @@ function think(ai: AiState, s: GameState, side: Side): void {
 
 /**
  * ¿Es buen momento para el poder que tiene? Cada poder tiene el suyo, como lo
- * usaría alguien que sabe: el Cue para volver a defender, el Loop con el
+ * usaría alguien que sabe: el Muro con un tiro yendo a su portería, el Loop con el
  * vinilo delante, el Low-pass en plena disputa. Los niveles bajos a menudo no
  * esperan al momento y lo sueltan cuando sea.
  */
@@ -202,26 +202,30 @@ function wantsPower(ai: AiState, s: GameState, side: Side): boolean {
   const f = p.facing
   const kind = p.power
   // Sin paciencia para esperar el momento: lo suelta en cuanto lo tiene un rato.
-  if (!ai.powerSmart) return ai.powerT > 1.5 && kind !== 'cue'
+  if (!ai.powerSmart) return ai.powerT > 1.5
   const ownGoalX = side === 0 ? 0 : FIELD.W
   const ahead = (b.x - p.x) * f
-  if (kind === 'scratch') return true
-  if (kind === 'lowpass') {
-    // El rival cerca del vinilo y el vinilo a su alcance: justo cuando importa.
-    return Math.abs(opp.x - b.x) < 220 && Math.abs(p.x - b.x) < 420
-  }
   const towardOwnGoal = b.vx * -f
-  if (kind === 'loop') {
-    // Sobre todo para salvar: un tiro que va a su portería y al que no llega,
-    // congelado en el aire mientras vuelve. Y si no, en ataque: con el vinilo
-    // bajo y un poco por delante, lo deja quieto a tiro de volea.
-    const save = towardOwnGoal > 300 && Math.abs(b.x - ownGoalX) < 380 && Math.abs(p.x - ownGoalX) > Math.abs(b.x - ownGoalX)
-    return save || (ahead > 30 && ahead < 140 && b.y > FIELD.GROUND_Y - 140 && Math.abs(b.vx) < 500)
-  }
-  // Cue: el vinilo va hacia su portería y él está lejos de ella, por detrás de la jugada.
-  const farFromHome = Math.abs(p.x - ownGoalX) > 480
-  const ballBehind = Math.abs(b.x - ownGoalX) < Math.abs(p.x - ownGoalX)
-  return towardOwnGoal > 250 && farFromHome && ballBehind
+  const nearMe = Math.abs(p.x - b.x) < 260
+  const nearRival = Math.abs(opp.x - b.x) < 220
+  // Un tiro que va hacia su portería y al que él no llega.
+  const danger = towardOwnGoal > 300 && Math.abs(b.x - ownGoalX) < 380 && Math.abs(p.x - ownGoalX) > Math.abs(b.x - ownGoalX)
+
+  // Las que se preparan para el siguiente tiro: cuanto antes, mejor.
+  if (kind === 'scratch' || kind === 'laser') return true
+  // Las que fastidian al rival: justo cuando está a punto de tocarlo.
+  if (kind === 'lowpass' || kind === 'robot' || kind === 'jester') return nearRival && Math.abs(p.x - b.x) < 420
+  // El Apagón, sobre todo si el rival tiene algo cargado.
+  if (kind === 'blackout') return opp.power !== null || opp.energy >= 0.5 || (nearRival && danger)
+  // El Bombo, con el rival (o el vinilo) a tiro de la onda.
+  if (kind === 'stomp') return Math.abs(opp.x - p.x) < 220 || (danger && Math.abs(b.x - p.x) < 250)
+  // Las de defensa: con un tiro yendo a su portería.
+  if (kind === 'wall') return danger
+  if (kind === 'loop') return danger || (ahead > 30 && ahead < 140 && b.y > FIELD.GROUND_Y - 140 && Math.abs(b.vx) < 500)
+  // Las que ayudan a llegar arriba: con el vinilo alto cerca.
+  if (kind === 'hype' || kind === 'wings' || kind === 'bighead') return nearMe && b.y < FIELD.GROUND_Y - 160
+  // La Nube y la Luna: con el vinilo en el aire por su lado del campo.
+  return nearMe && b.y < FIELD.GROUND_Y - 120
 }
 
 /**

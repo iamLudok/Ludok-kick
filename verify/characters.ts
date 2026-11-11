@@ -24,8 +24,9 @@ const IDLE = emptyInput()
 const DT = 1 / 60
 
 /* --- Cada DJ tiene su ventaja -------------------------------------------- */
-/** El primer DJ que tiene esa ventaja por encima de lo normal. */
-const withPerk = (stat: 'speed' | 'jump' | 'kick' | 'timing') => DJS.find((d) => d.stats[stat] > 1)!.stats
+/** El DJ que más tiene de esa ventaja. */
+const withPerk = (stat: 'speed' | 'jump' | 'kick' | 'timing') =>
+  DJS.reduce((best, d) => (d.stats[stat] > best.stats[stat] ? d : best)).stats
 
 function run(stats: PlayerStats, seconds: number, inp = IDLE) {
   const s = createInitialState(stats)
@@ -71,10 +72,11 @@ function run(stats: PlayerStats, seconds: number, inp = IDLE) {
   check('el DJ preciso tiene la ventana PERFECT más amplia', judgeDelta(edge, BEAT.REFERENCE_BPM, withPerk('timing').timing) === 2 && judgeDelta(edge, BEAT.REFERENCE_BPM, 1) === 1)
 
   check('cada DJ tiene su poder', DJS.every((d) => d.stats.power !== null))
-  check('y los cuatro poderes están repartidos', new Set(DJS.map((d) => d.stats.power)).size === 4)
+  check('y cada uno la suya: no se repite ninguna', new Set(DJS.map((d) => d.stats.power)).size === DJS.length)
   // Con 14 DJs se repite algún color de camiseta, pero no la silueta entera:
   // peinado, máscara, gafas, barba y sonrisa juntos.
-  const silhouette = (d: (typeof DJS)[number]) => [d.look.hair_style, d.look.mask, d.look.glasses, d.look.beard, d.look.hair, d.look.jersey].join()
+  const silhouette = (d: (typeof DJS)[number]) =>
+    [d.look.hair, d.look.mask, d.look.glasses, d.look.facialHair, d.look.hairColor, d.look.mouth, d.look.jersey].join()
   check('ninguno se parece del todo a otro', new Set(DJS.map(silhouette)).size === DJS.length)
   check('ninguna ventaja es exagerada', DJS.every((d) => d.stats.speed <= 1.1 && d.stats.jump <= 1.1 && d.stats.kick <= 1.15 && d.stats.timing <= 1.3))
 }

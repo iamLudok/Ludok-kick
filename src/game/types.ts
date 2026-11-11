@@ -22,10 +22,39 @@ export type InputFrame = {
   power: boolean
 }
 
-/** Los poderes de DJ. */
-export type PowerKind = 'scratch' | 'lowpass' | 'loop' | 'cue'
+/** Las habilidades de DJ: una por DJ (ver `src/content/djs.ts`). */
+export type PowerKind =
+  | 'scratch'
+  | 'stomp'
+  | 'hype'
+  | 'robot'
+  | 'bighead'
+  | 'cloud'
+  | 'wall'
+  | 'laser'
+  | 'lowpass'
+  | 'loop'
+  | 'moon'
+  | 'wings'
+  | 'jester'
+  | 'blackout'
 
-export const POWER_KINDS: PowerKind[] = ['scratch', 'lowpass', 'loop', 'cue']
+export const POWER_KINDS: PowerKind[] = [
+  'scratch',
+  'stomp',
+  'hype',
+  'robot',
+  'bighead',
+  'cloud',
+  'wall',
+  'laser',
+  'lowpass',
+  'loop',
+  'moon',
+  'wings',
+  'jester',
+  'blackout',
+]
 
 /** Multiplicadores por personaje. Con todo a 1 es el jugador base. */
 export type PlayerStats = {
@@ -66,8 +95,21 @@ export type PlayerState = {
   scratch: boolean
   /** Lo que le queda de cámara lenta (Low-pass del rival), en segundos de verdad. */
   slowT: number
-  /** Tras un Cue, lo que le queda hasta poder moverse otra vez. */
-  recoverT: number
+  /** Congelado por un Modo robot del rival: no se mueve ni chuta. */
+  frozenT: number
+  /** Manos arriba: salta mucho más. */
+  hypeT: number
+  /** Cabeza gigante. */
+  bigT: number
+  /** Alas: cae planeando y tiene un salto en el aire. */
+  wingsT: number
+  wingJump: boolean
+  /** Bufón del rival: izquierda y derecha cambiadas. */
+  invertT: number
+  /** Apagón del rival: ni gana energía ni lanza poderes. */
+  blackoutT: number
+  /** Tiene un Rayo preparado para su siguiente tiro. */
+  laser: boolean
 }
 
 export type BallState = {
@@ -83,6 +125,10 @@ export type BallState = {
   curveDir: number
   /** Loop: lo que le queda flotando, en segundos de verdad. */
   loopT: number
+  /** Nube: ligero y botón. */
+  cloudT: number
+  /** Rayo: va recto, sin caer, hasta que choca o se le acaba. */
+  laserT: number
 }
 
 /** Cómo de a tiempo fue un toque: 0 normal, 1 GOOD, 2 PERFECT. */
@@ -96,7 +142,7 @@ export type GameEvent =
   /** Un toque al vinilo, con el pie o con la cabeza, y dónde estaba el vinilo. */
   | { type: 'kick' | 'head'; side: Side; judge: Judge; x: number; y: number }
   | { type: 'bounce'; speed: number }
-  /** Se lanza un poder. Para Cue, (x, y) es de dónde salió el jugador. */
+  /** Se lanza un poder; (x, y) es la cabeza de quien lo lanza. */
   | { type: 'power'; side: Side; kind: PowerKind; x: number; y: number }
   /** La barra de energía se llenó y trajo un poder. */
   | { type: 'charged'; side: Side; kind: PowerKind }
@@ -149,4 +195,9 @@ export type GameState = {
   scorer: Side
   /** Semilla del azar del partido (qué poder toca). Con la misma, el mismo partido. */
   seed: number
+  /** Luna: gravedad baja para todos. */
+  moonT: number
+  /** Muro: un bafle tapa la portería de `wallSide`. */
+  wallT: number
+  wallSide: Side
 }

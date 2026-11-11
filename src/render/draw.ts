@@ -20,9 +20,10 @@ import {
   type SkPath,
   type SkPicture,
 } from '@shopify/react-native-skia'
-import { BALL, FIELD, GOAL, KICK, PLAYER } from '../game/constants'
-import { kickAngle } from '../game/step'
-import type { GameState, InputFrame, Judge, PlayerState, PowerKind } from '../game/types'
+import { BALL, FIELD, GOAL, KICK, PLAYER, POWER } from '../game/constants'
+import { headR, kickAngle } from '../game/step'
+import { POWER_KINDS, type GameState, type InputFrame, type Judge, type PlayerState, type PowerKind } from '../game/types'
+import { POWER_NAME } from '../ui/labels'
 import { palette } from '../ui/theme'
 import type { DjLook } from '../content/djs'
 import { createDjPaints, drawHead, type DjPaints } from './characters'
@@ -48,7 +49,7 @@ export function judgeLabel(judge: Judge): number {
 
 export function powerLabel(kind: PowerKind): number {
   'worklet'
-  return kind === 'scratch' ? 2 : kind === 'lowpass' ? 3 : kind === 'loop' ? 4 : 5
+  return 2 + POWER_KINDS.indexOf(kind)
 }
 
 /** Segundos que dura un cartel en pantalla. */
@@ -120,8 +121,21 @@ export type Painter = {
   /** El botón de poder: anillo de energía, relleno cuando hay poder y el icono de cada uno. */
   energyRing: SkPaint
   powerFill: SkPaint
-  iconStroke: SkPaint
-  powerIcons: Record<PowerKind, SkPath>
+  /** El nombre de la habilidad dentro del botón, ya medido para centrarlo. */
+  buttonFont: SkFont
+  buttonText: SkPaint
+  powerNames: Record<PowerKind, { text: string; width: number }>
+  iceTint: SkPaint
+  hypeRing: SkPaint
+  wing: SkPaint
+  darkTint: SkPaint
+  laserTrail: SkPaint
+  cloudPuff: SkPaint
+  moonTint: SkPaint
+  moonDisk: SkPaint
+  wallCab: SkPaint
+  wallCone: SkPaint
+  glyphFont: SkFont
   /** Efectos de los poderes en marcha. */
   slowTint: SkPaint
   slowLine: SkPaint
@@ -130,7 +144,7 @@ export type Painter = {
   loopArc: SkPaint
 }
 
-const LABELS = ['GOOD', 'PERFECT', 'SCRATCH', 'LOW-PASS', 'LOOP', 'CUE']
+const LABELS = ['GOOD', 'PERFECT', ...POWER_KINDS.map((k) => POWER_NAME[k].toUpperCase())]
 
 function fill(color: string): SkPaint {
   const p = Skia.Paint()
@@ -247,40 +261,6 @@ function recordBackground(v: View, st: StagePalette, decor: StageDecor, bounds: 
 }
 
 /**
- * Los iconos de los poderes, geométricos como los del resto de botones. Van
- * de trazo: un filtro, una flecha en bucle… se leen mejor como líneas.
- */
-function powerIcons(c: Point, r: number): Record<PowerKind, SkPath> {
-  const s = r * 0.42
-  // Scratch: el vaivén de la mano sobre el plato, un zigzag.
-  const scratch = Skia.Path.Make()
-  scratch.moveTo(c.x - s, c.y + s * 0.5)
-  scratch.lineTo(c.x - s * 0.35, c.y - s * 0.6)
-  scratch.lineTo(c.x + s * 0.2, c.y + s * 0.6)
-  scratch.lineTo(c.x + s, c.y - s * 0.5)
-  // Low-pass: la curva de un filtro, plana y luego cayendo.
-  const lowpass = Skia.Path.Make()
-  lowpass.moveTo(c.x - s, c.y - s * 0.35)
-  lowpass.lineTo(c.x + s * 0.1, c.y - s * 0.35)
-  lowpass.quadTo(c.x + s * 0.55, c.y - s * 0.35, c.x + s, c.y + s * 0.7)
-  // Loop: una vuelta casi entera con su punta de flecha.
-  const loop = Skia.Path.Make()
-  loop.addArc({ x: c.x - s * 0.8, y: c.y - s * 0.8, width: s * 1.6, height: s * 1.6 }, -60, 290)
-  loop.moveTo(c.x + s * 0.4, c.y - s * 1.05)
-  loop.lineTo(c.x + s * 0.45, c.y - s * 0.65)
-  loop.lineTo(c.x + s * 0.05, c.y - s * 0.55)
-  // Cue: volver al principio, una barra y un triángulo hacia ella.
-  const cue = Skia.Path.Make()
-  cue.moveTo(c.x - s * 0.7, c.y - s * 0.7)
-  cue.lineTo(c.x - s * 0.7, c.y + s * 0.7)
-  cue.moveTo(c.x + s * 0.7, c.y - s * 0.7)
-  cue.lineTo(c.x - s * 0.3, c.y)
-  cue.lineTo(c.x + s * 0.7, c.y + s * 0.7)
-  cue.close()
-  return { scratch, lowpass, loop, cue }
-}
-
-/**
  * El escenario entero en pequeño, para la pantalla de selección: el mismo
  * fondo que en el partido, sin jugadores ni botones.
  */
@@ -304,6 +284,7 @@ export function createPainter(sw: number, sh: number, insetX: number, stage: Sta
   const vinylShine = stroke('#ffffff', 2.5)
   vinylShine.setAlphaf(0.35)
   const font = matchFont({ fontFamily: 'sans-serif', fontSize: 26, fontWeight: '900', fontStyle: 'italic' })
+  const buttonFont = matchFont({ fontFamily: 'sans-serif', fontSize: 13, fontWeight: '900' })
   const textOutline = stroke(st.outline, 5)
 
   return {
@@ -356,8 +337,25 @@ export function createPainter(sw: number, sh: number, insetX: number, stage: Sta
     textWidth: LABELS.map((l) => font.measureText(l).width),
     energyRing: stroke(st.power, 5),
     powerFill: fill(st.power),
-    iconStroke: stroke(palette.fg, Math.max(3, controls.powerR * 0.12)),
-    powerIcons: powerIcons(controls.power, controls.powerR),
+    buttonFont,
+    buttonText: fill(palette.fg),
+    powerNames: Object.fromEntries(
+      POWER_KINDS.map((kind) => {
+        const text = POWER_NAME[kind].toUpperCase()
+        return [kind, { text, width: buttonFont.measureText(text).width }]
+      }),
+    ) as Record<PowerKind, { text: string; width: number }>,
+    iceTint: fill('#9fe8ff'),
+    hypeRing: stroke(st.perfect, 4),
+    wing: fill('#ffffff'),
+    darkTint: fill('#000000'),
+    laserTrail: stroke('#ff4f6a', 8),
+    cloudPuff: fill('#ffffff'),
+    moonTint: fill('#1a2a6a'),
+    moonDisk: fill('#f4f1d8'),
+    wallCab: fill(st.cabinet),
+    wallCone: stroke(st.coneRing, 3),
+    glyphFont: matchFont({ fontFamily: 'sans-serif', fontSize: 22, fontWeight: '900' }),
     slowTint: fill(st.slow),
     slowLine: stroke(st.slow, 3),
     scratchArc: stroke(st.power, 4),
@@ -417,7 +415,19 @@ function drawPlayer(canvas: SkCanvas, k: Painter, p: PlayerState, ahead: number,
     drawShoe(canvas, k, x + f * 11, y - 8, f, 0)
   }
 
-  drawHead(canvas, d, x, y - PLAYER.HEAD_CY, f, ballX, ballY)
+  const cy = y - PLAYER.HEAD_CY
+  if (p.bigT > 0) {
+    // Cabeza gigante: la misma cabeza, más grande, alrededor de su centro (el
+    // mismo con el que choca la física).
+    canvas.save()
+    canvas.translate(x, cy)
+    canvas.scale(POWER.BIG_SCALE, POWER.BIG_SCALE)
+    canvas.translate(-x, -cy)
+    drawHead(canvas, d, x, cy, f, ballX, ballY)
+    canvas.restore()
+  } else {
+    drawHead(canvas, d, x, cy, f, ballX, ballY)
+  }
 }
 
 function drawVinyl(canvas: SkCanvas, k: Painter, x: number, y: number, angle: number): void {
@@ -524,6 +534,37 @@ function drawPowerEffects(canvas: SkCanvas, k: Painter, s: GameState, ahead: num
         canvas.drawLine(x + back * (PLAYER.HEAD_R + 8), ly, x + back * (PLAYER.HEAD_R + 30), ly, k.slowLine)
       }
     }
+    const hr = headR(p)
+    if (p.frozenT > 0) {
+      // Modo robot del rival: congelado, como en un bloque de hielo.
+      k.iceTint.setAlphaf(0.45)
+      canvas.drawRRect({ rect: { x: x - hr - 6, y: cy - hr - 6, width: hr * 2 + 12, height: hr + PLAYER.HEAD_CY + 12 }, rx: 10, ry: 10 }, k.iceTint)
+    }
+    if (p.hypeT > 0 || p.laser) {
+      // Manos arriba, o un Rayo preparado: un aro que late.
+      k.hypeRing.setAlphaf(0.5 + 0.4 * Math.sin(spin * 20))
+      canvas.drawCircle(x, cy, hr + 8, p.laser ? k.laserTrail : k.hypeRing)
+    }
+    if (p.wingsT > 0) {
+      // Alas: dos alas blancas a la espalda.
+      k.wing.setAlphaf(0.9)
+      const back = -p.facing
+      const flap = Math.sin(spin * 18) * 6
+      canvas.drawOval({ x: x + back * (hr + 2) - 16, y: cy - 6 - flap, width: 32, height: 14 }, k.wing)
+      canvas.drawOval({ x: x + back * (hr - 6) - 14, y: cy + 8 + flap, width: 28, height: 12 }, k.wing)
+    }
+    if (p.invertT > 0) {
+      // Bufón del rival: signos de interrogación dándole vueltas.
+      for (let j = 0; j < 2; j++) {
+        const a = spin * 6 + j * Math.PI
+        canvas.drawText('?', x + Math.cos(a) * (hr + 6) - 6, cy - hr - 6 + Math.sin(a) * 8, k.textFill[2], k.glyphFont)
+      }
+    }
+    if (p.blackoutT > 0) {
+      // Apagón: la cabeza a oscuras.
+      k.darkTint.setAlphaf(0.5)
+      canvas.drawCircle(x, cy, hr + 2, k.darkTint)
+    }
     if (p.scratch) {
       // Scratch preparado: dos arcos girando alrededor de la cabeza.
       const r = PLAYER.HEAD_R + 9
@@ -537,6 +578,28 @@ function drawPowerEffects(canvas: SkCanvas, k: Painter, s: GameState, ahead: num
   if (b.curveT > 0) {
     k.curveGlow.setAlphaf(0.85)
     canvas.drawCircle(bx, by, BALL.R + 6, k.curveGlow)
+  }
+  if (b.laserT > 0) {
+    // Rayo: una estela recta detrás del vinilo.
+    const dir = Math.sign(b.vx) || 1
+    k.laserTrail.setAlphaf(0.85)
+    canvas.drawLine(bx - dir * 110, by, bx - dir * BALL.R, by, k.laserTrail)
+  }
+  if (b.cloudT > 0) {
+    // Nube: algodones alrededor del vinilo.
+    k.cloudPuff.setAlphaf(0.55)
+    for (let j = 0; j < 4; j++) {
+      const a = spin * 2 + (j * Math.PI) / 2
+      canvas.drawCircle(bx + Math.cos(a) * (BALL.R + 4), by + Math.sin(a) * (BALL.R + 4), 9, k.cloudPuff)
+    }
+  }
+  if (s.wallT > 0) {
+    // Muro: una columna de bafles en la línea de gol.
+    const lineX = s.wallSide === 0 ? GOAL.DEPTH : FIELD.W - GOAL.DEPTH
+    const top = FIELD.GROUND_Y - GOAL.HEIGHT
+    canvas.drawRRect({ rect: { x: lineX - 13, y: top, width: 26, height: GOAL.HEIGHT }, rx: 4, ry: 4 }, k.wallCab)
+    for (let cy2 = top + 20; cy2 < FIELD.GROUND_Y - 10; cy2 += 34) canvas.drawCircle(lineX, cy2, 9, k.wallCone)
+    canvas.drawRRect({ rect: { x: lineX - 13, y: top, width: 26, height: GOAL.HEIGHT }, rx: 4, ry: 4 }, k.outline)
   }
   if (b.loopT > 0) {
     // Loop: tres arcos girando alrededor del vinilo quieto.
@@ -569,7 +632,14 @@ function drawPowerButton(canvas: SkCanvas, k: Painter, p: PlayerState, pressed: 
   k.powerFill.setAlphaf(pressed ? 0.6 : 1)
   canvas.drawCircle(c.x, c.y, r * beat, k.powerFill)
   canvas.drawCircle(c.x, c.y, r * beat, k.buttonRing)
-  canvas.drawPath(k.powerIcons[p.power], k.iconStroke)
+  // El nombre de la habilidad, encogido si no cabe en el botón.
+  const name = k.powerNames[p.power]
+  const fit = Math.min(1, (r * 1.7) / name.width)
+  canvas.save()
+  canvas.translate(c.x, c.y + 4)
+  canvas.scale(fit, fit)
+  canvas.drawText(name.text, -name.width / 2, 0, k.buttonText, k.buttonFont)
+  canvas.restore()
 }
 
 function drawButton(canvas: SkCanvas, k: Painter, at: Point, icon: SkPath, pressed: boolean): void {
@@ -658,6 +728,17 @@ export function drawFrame(
 
   canvas.restore()
 
+  if (s.moonT > 0) {
+    // Luna: noche azul y una luna en lo alto.
+    k.moonTint.setAlphaf(0.25)
+    canvas.drawRect({ x: 0, y: 0, width: v.sw, height: v.sh }, k.moonTint)
+    canvas.drawCircle(v.ox + 880 * v.scale, v.oy + 60 * v.scale, 26 * v.scale, k.moonDisk)
+  }
+  if (s.players[0].blackoutT > 0) {
+    // Apagón sobre ti: todo a oscuras.
+    k.darkTint.setAlphaf(0.45)
+    canvas.drawRect({ x: 0, y: 0, width: v.sw, height: v.sh }, k.darkTint)
+  }
   // Congelado esperando el drop: el campo se apaga para que se note la pausa.
   if (s.phase === 'goal') {
     k.freezeScrim.setAlphaf(0.45)

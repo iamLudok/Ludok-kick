@@ -188,7 +188,15 @@ export function wood(e: Engine, t: number, level = 0.3): void {
 
 /* --- Efectos: suenan «ya», no en un instante programado ------------------ */
 
-function blip(e: Engine, t: number, from: number, to: number, dur: number, level: number, type: 'sine' | 'triangle' | 'square'): void {
+function blip(
+  e: Engine,
+  t: number,
+  from: number,
+  to: number,
+  dur: number,
+  level: number,
+  type: 'sine' | 'triangle' | 'square' | 'sawtooth',
+): void {
   const osc = e.ctx.createOscillator()
   const amp = e.ctx.createGain()
   osc.type = type
@@ -262,23 +270,60 @@ export function chargedSfx(e: Engine): void {
   ;[660, 880, 1320].forEach((f, i) => blip(e, t + i * 0.06, f, f, 0.12, 0.2, 'triangle'))
 }
 
+/** El sonido de cada habilidad: corto, y con algo de lo que hace. */
 export function powerSfx(e: Engine, kind: PowerKind): void {
   const t = e.ctx.currentTime
-  if (kind === 'scratch') {
-    // Ida y vuelta del vinilo bajo la mano.
-    blip(e, t, 300, 1400, 0.09, 0.3, 'square')
-    blip(e, t + 0.09, 1400, 250, 0.11, 0.3, 'square')
-    blip(e, t + 0.2, 300, 1100, 0.08, 0.25, 'square')
-  } else if (kind === 'lowpass') {
-    // Algo que se hunde.
-    blip(e, t, 900, 90, 0.5, 0.35, 'triangle')
-  } else if (kind === 'loop') {
-    // El mismo golpecito repetido, como un bucle cortado.
-    for (let i = 0; i < 4; i++) blip(e, t + i * 0.07, 520, 520, 0.05, 0.25, 'square')
-  } else {
-    // Cue: el clic de volver al punto de cue y el pitido del pre-escucha.
-    blip(e, t, 2000, 2000, 0.02, 0.35, 'square')
-    blip(e, t + 0.05, 440, 880, 0.18, 0.25, 'sine')
+  switch (kind) {
+    case 'scratch':
+      // Ida y vuelta del vinilo bajo la mano.
+      blip(e, t, 300, 1400, 0.09, 0.3, 'square')
+      blip(e, t + 0.09, 1400, 250, 0.11, 0.3, 'square')
+      blip(e, t + 0.2, 300, 1100, 0.08, 0.25, 'square')
+      break
+    case 'stomp':
+      // Un bombo enorme.
+      blip(e, t, 160, 35, 0.45, 0.9, 'sine')
+      break
+    case 'hype':
+      ;[440, 554, 659, 880].forEach((f, i) => blip(e, t + i * 0.05, f, f, 0.1, 0.22, 'triangle'))
+      break
+    case 'robot':
+      for (let i = 0; i < 3; i++) blip(e, t + i * 0.08, 900 - i * 200, 900 - i * 200, 0.06, 0.25, 'square')
+      break
+    case 'bighead':
+      blip(e, t, 200, 900, 0.35, 0.3, 'triangle')
+      break
+    case 'cloud':
+      blip(e, t, 600, 1200, 0.4, 0.2, 'sine')
+      break
+    case 'wall':
+      blip(e, t, 120, 60, 0.25, 0.6, 'square')
+      break
+    case 'laser':
+      blip(e, t, 2400, 300, 0.22, 0.3, 'sawtooth')
+      break
+    case 'lowpass':
+      // Algo que se hunde.
+      blip(e, t, 900, 90, 0.5, 0.35, 'triangle')
+      break
+    case 'loop':
+      // El mismo golpecito repetido, como un bucle cortado.
+      for (let i = 0; i < 4; i++) blip(e, t + i * 0.07, 520, 520, 0.05, 0.25, 'square')
+      break
+    case 'moon':
+      blip(e, t, 1200, 400, 0.7, 0.2, 'sine')
+      break
+    case 'wings':
+      for (let i = 0; i < 3; i++) blip(e, t + i * 0.06, 700, 1100, 0.05, 0.18, 'triangle')
+      break
+    case 'jester':
+      // Un «tururú» de bufón.
+      ;[660, 523, 659, 392].forEach((f, i) => blip(e, t + i * 0.07, f, f, 0.07, 0.22, 'square'))
+      break
+    case 'blackout':
+      // Se va la luz.
+      blip(e, t, 600, 40, 0.6, 0.35, 'sawtooth')
+      break
   }
 }
 

@@ -7,6 +7,7 @@ import { useUnlocks } from '../hooks/useHistory'
 import { DjPortrait } from './Art'
 import { Button } from './Button'
 import { Txt } from './Text'
+import { djNameColor } from './labels'
 import { palette, radius, space } from './theme'
 
 /** Las misiones y lo que llevas de cada una. Cumplir una desbloquea su DJ. */
@@ -38,13 +39,7 @@ export function MissionsScreen() {
           const done = unlocked.has(m.dj)
           const progress = Math.min(m.progress(history), m.target)
           return (
-            <View
-              key={m.dj}
-              style={[
-                styles.card,
-                done && { borderColor: dj.look.jersey === '#1d1d24' ? palette.brand : dj.look.jersey },
-              ]}
-            >
+            <View key={m.dj} style={[styles.card, done && { borderColor: djNameColor(dj.look.jersey, palette.brand) }]}>
               <DjPortrait dj={dj} size={56} locked={!done} />
               <View style={styles.text}>
                 <Txt variant="body">{m.title}</Txt>

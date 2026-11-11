@@ -232,7 +232,7 @@ export const AI = {
 
 /** Poderes de DJ y su barra de energía. */
 export const POWER = {
-  /** Cada DJ lanza siempre su poder propio. Con false, el poder sale al azar entre los cuatro. */
+  /** Cada DJ lanza siempre su habilidad propia. Con false, sale una al azar entre todas. */
   SIGNATURE: true,
   /** Energía por remate PERFECT (la barra va de 0 a 1): con 0,25 se llena con cuatro. */
   PER_PERFECT: 0.25,
@@ -249,13 +249,37 @@ export const POWER = {
    * es enorme) y al acercarse a chutar la cabeza lo apartaba antes que el pie.
    */
   LOOP_TIME: 1.5,
-  /**
-   * Cue: tras volver a su sitio, el jugador tarda esto en poder moverse. Sin
-   * este instante de recuperación el Cue era claramente el poder más fuerte:
-   * una defensa perfecta en cualquier momento.
-   */
-  CUE_RECOVER: 0.2,
   LOOP_HEIGHT: 45,
+  /** Bombo (Karl Box): la onda alcanza hasta aquí y empuja con esta fuerza. */
+  STOMP_RADIUS: 300,
+  STOMP_PUSH: 760,
+  /** Manos arriba (Dabid Getta): cuánto más salta y durante cuánto. */
+  HYPE_JUMP: 1.4,
+  HYPE_TIME: 5,
+  /** Modo robot (Daft Funk): cuánto se queda congelado el rival. */
+  ROBOT_TIME: 1.5,
+  /** Cabeza gigante (Deadmouse). */
+  BIG_SCALE: 1.5,
+  BIG_TIME: 5,
+  /** Nube (Marsmelou): el vinilo pesa esta fracción y bota así. */
+  CLOUD_GRAVITY: 0.35,
+  CLOUD_BOUNCE: 0.95,
+  CLOUD_TIME: 5,
+  /** Muro (Carlota de Whitte): cuánto tapa su portería. */
+  WALL_TIME: 4,
+  /** Rayo (Ameli Lenz): velocidad del tiro y cuánto aguanta sin caer. */
+  LASER_SPEED: 1250,
+  LASER_TIME: 0.9,
+  /** Luna (Solomoon): la gravedad de todos, multiplicada por esto. */
+  MOON_GRAVITY: 0.4,
+  MOON_TIME: 5,
+  /** Alas (Klaptone): planea cayendo a esta fracción de la gravedad. */
+  WINGS_GRAVITY: 0.4,
+  WINGS_TIME: 5,
+  /** Bufón (Boris Brejtxa): cuánto tiene el rival los controles cambiados. */
+  JESTER_TIME: 3,
+  /** Apagón (I Hate Modems): cuánto se queda el rival sin energía ni poderes. */
+  BLACKOUT_TIME: 6,
 }
 
 /** La onda expansiva del drop: cuánto lanza al que encajó el gol. */

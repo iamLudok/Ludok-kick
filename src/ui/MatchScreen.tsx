@@ -24,8 +24,10 @@ import { getDj, type DjId } from '../content/djs'
 import { readSetup, resultParams, setupParams, type MatchResult, type MatchSetup } from '../content/setup'
 import { getGenre } from '../content/genres'
 import { getStage } from '../content/stages'
+import { DjPortrait } from './Art'
 import { Txt } from './Text'
 import { TouchControls } from './TouchControls'
+import { djNameColor } from './labels'
 import { palette, radius, space } from './theme'
 
 /** Lo que el marcador necesita saber del partido. Solo cambia unas pocas veces por minuto. */
@@ -82,6 +84,9 @@ type Runtime = {
 }
 
 /** Lo que se guarda en el historial al acabar. */
+/** Lo que dura la presentación «VS» antes de cada partido (se salta tocando). */
+const VS_MS = 2200
+
 /** Cuánto se espera, con el marcador final a la vista, antes de pasar al resultado. */
 const END_PAUSE_MS = 1400
 
@@ -309,6 +314,13 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           if (ev.side === 0) rt.powers++
           scheduleOnRN(playPower, ev.kind)
           view.fx.push({ label: powerLabel(ev.kind), x: ev.x, y: ev.y, age: 0 })
+          if (ev.kind === 'stomp') {
+            // El Bombo se ve como la onda de un drop: anillo, chispas y sacudida.
+            view.shock.x = ev.x
+            view.shock.y = ev.y
+            view.shock.age = 0
+            burst(view.particles, ev.x, ev.y, 24, 700, PC.GLOW)
+          }
         } else if (ev.type === 'charged') {
           // Solo se avisa de la barra propia: la del rival se ve en el marcador.
           if (ev.side === 0) scheduleOnRN(playCharged)
@@ -408,12 +420,20 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
   // partido seguía corriendo sin nadie delante (el reloj avanzaba y el rival
   // podía marcar) y la app se comía la batería pintando a una pantalla que ya
   // no existe.
+  // La presentación «VS» antes del partido. Mientras se ve, el partido espera
+  // (la música ya suena: entra en la cabina con el bombo puesto).
+  const [intro, setIntro] = useState(true)
   useEffect(() => {
-    const apply = (state: AppStateStatus) => loop.setActive(state === 'active')
+    const timer = setTimeout(() => setIntro(false), VS_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    const apply = (state: AppStateStatus) => loop.setActive(state === 'active' && !intro)
     apply(AppState.currentState)
     const sub = AppState.addEventListener('change', apply)
     return () => sub.remove()
-  }, [loop])
+  }, [loop, intro])
 
   const ended = hud.phase === 'ended'
 
@@ -428,13 +448,13 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
       <View style={styles.hud} pointerEvents="none">
         <View style={styles.scoreboard}>
           <EnergyBar value={hud.energy0} color={me.look.jersey} full={stage.palette.power} />
-          <Txt variant="score" style={{ color: me.look.jersey }}>
+          <Txt variant="score" style={{ color: djNameColor(me.look.jersey, palette.fg) }}>
             {hud.score0}
           </Txt>
           <Txt variant={hud.golden ? 'label' : 'score'} tone={hud.golden ? 'brand' : 'fg'} style={styles.clock}>
             {hud.golden ? 'Gol de oro' : clock(hud.seconds)}
           </Txt>
-          <Txt variant="score" style={{ color: rivalDj.look.jersey }}>
+          <Txt variant="score" style={{ color: djNameColor(rivalDj.look.jersey, palette.fg) }}>
             {hud.score1}
           </Txt>
           <EnergyBar value={hud.energy1} color={rivalDj.look.jersey} full={stage.palette.power} />
@@ -449,6 +469,26 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           </Txt>
         )}
       </View>
+
+      {intro && (
+        <Pressable style={styles.vs} onPress={() => setIntro(false)} accessibilityLabel="Empezar el partido">
+          <View style={styles.vsSide}>
+            <DjPortrait dj={me} size={170} />
+            <Txt variant="title" style={{ color: djNameColor(me.look.jersey, palette.fg) }}>
+              {me.name}
+            </Txt>
+          </View>
+          <Txt variant="banner" tone="brand" style={styles.vsText}>
+            VS
+          </Txt>
+          <View style={styles.vsSide}>
+            <DjPortrait dj={rivalDj} size={170} flip />
+            <Txt variant="title" style={{ color: djNameColor(rivalDj.look.jersey, palette.fg) }}>
+              {rivalDj.name}
+            </Txt>
+          </View>
+        </Pressable>
+      )}
 
       {settings.showPerf === true && (
         <View style={[styles.perf, { left: insetX + space.sm }]} pointerEvents="none">
@@ -495,6 +535,16 @@ function EnergyBar({ value, color, full: fullColor }: { value: number; color: st
 }
 
 const styles = StyleSheet.create({
+  vs: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: palette.scrim,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.xxl,
+  },
+  vsSide: { alignItems: 'center', gap: space.sm },
+  vsText: { fontSize: 72, fontStyle: 'italic' },
   energy: { width: 56, height: 8, borderRadius: radius.pill, backgroundColor: palette.line, overflow: 'hidden' },
   energyFill: { height: '100%', borderRadius: radius.pill },
   root: { flex: 1, backgroundColor: palette.bg },

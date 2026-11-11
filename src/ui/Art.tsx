@@ -26,7 +26,7 @@ export function DjPortrait({
 }) {
   // Se graba una vez por DJ, tamaño y estado: el retrato no cambia.
   const picture = useMemo(() => {
-    const look: DjLook = locked ? { ...dj.look, jersey: SHADOW, skin: SHADOW, hair: SHADOW, accent: SHADOW } : dj.look
+    const look: DjLook = locked ? { ...dj.look, jersey: SHADOW, skin: SHADOW, hairColor: SHADOW, accent: SHADOW } : dj.look
     const paints = createDjPaints(look, locked ? SHADOW : OUTLINE)
     if (locked) {
       // Hasta los blancos de los ojos y las máscaras, del mismo color.
