@@ -75,6 +75,19 @@ async function main() {
   eq('fusionar actualiza el partido que cambió', merged.get(full.id)?.goalsFor, 8)
   eq('sin tocar el otro', merged.get(bare.id)?.goalsFor, 0)
 
+  /* --- Valores desconocidos --------------------------------------------- */
+  const odd = await freshDbAsCurrent()
+  const weird = {
+    ...backup,
+    matches: [{ ...backup.matches[0], id: 'raro', level: 'after-hours' }],
+    settings: { ...backup.settings, lastLevel: 'after-hours' },
+  }
+  await importBackup(odd, JSON.stringify(weird))
+  const [oddMatch] = await listMatches()
+  eq('un nivel desconocido en la copia entra como «sin nivel»', oddMatch?.level, undefined)
+  eq('y el resto del partido entra igual', oddMatch?.goalsFor, backup.matches[0].goalsFor)
+  eq('un último nivel desconocido no se cuela en los ajustes', (await readSettings(odd)).lastLevel, undefined)
+
   /* --- Volumen ----------------------------------------------------------- */
   const big = await freshDb()
   const many: MatchRecord[] = Array.from({ length: 1500 }, (_, i) => ({

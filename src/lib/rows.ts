@@ -2,7 +2,7 @@
 // hueco es `null`; en el dominio (y en el fichero de copia) es `undefined`.
 import { matches, settings } from './schema'
 import { SCHEMA_VERSION } from './version'
-import type { MatchRecord, Settings } from '../types'
+import { isLevel, type MatchRecord, type Settings } from '../types'
 
 type MatchRow = typeof matches.$inferSelect
 type MatchInsert = typeof matches.$inferInsert
@@ -39,7 +39,9 @@ export function matchToRow(m: MatchRecord): MatchInsert {
     goldenGoal: m.goldenGoal ?? false,
     perfects: m.perfects ?? 0,
     goods: m.goods ?? 0,
-    level: n(m.level),
+    // Un nivel que no existe (copia escrita a mano, o de una versión futura
+    // con niveles nuevos) se guarda como «sin nivel» en vez de colarse.
+    level: isLevel(m.level) ? m.level : null,
     dj: n(m.dj),
     rivalDj: n(m.rivalDj),
     stage: n(m.stage),
@@ -68,7 +70,7 @@ export function settingsToRow(s: Settings): SettingsInsert {
     sfxVolume: s.sfxVolume,
     lastDj: n(s.lastDj),
     lastStage: n(s.lastStage),
-    lastLevel: n(s.lastLevel),
+    lastLevel: isLevel(s.lastLevel) ? s.lastLevel : null,
     lastBackup: s.lastBackup,
     schemaVersion: s.schemaVersion ?? SCHEMA_VERSION,
   }

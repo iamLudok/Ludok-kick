@@ -15,7 +15,7 @@ siguiente.
 |---|---|---|
 | 1 | Prototipo de física: campo, dos jugadores (el rival quieto), vinilo, porterías, goles, marcador y reloj | Hecha |
 | 2 | Motor de beat: música sintetizada, remate al ritmo (PERFECT / GOOD), calibración de latencia, ajustes y copia de seguridad | Hecha |
-| 3 | IA con tres niveles | Pendiente |
+| 3 | IA con tres niveles (Warm-up, Peak Time, Closing) e historial de partidos | Hecha |
 | 4 | Drops en los goles y BPM que sube con el partido | Pendiente |
 | 5 | Poderes de DJ y barra de energía | Pendiente |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Pendiente |
@@ -34,6 +34,18 @@ siguiente.
   es GOOD, un 15 % más. El anillo que se cierra sobre tu jugador llega a la cabeza justo en el
   beat, y el suelo y los bafles laten con él.
 - Empate al acabar el tiempo: gol de oro.
+
+## El rival
+
+Tres niveles: **Warm-up**, **Peak Time** y **Closing**. La IA juega con los mismos botones y
+la misma física que tú: no corre más ni chuta más fuerte. Lo que cambia entre niveles es
+cuánto tarda en reaccionar, cuánto falla al calcular dónde caerá el vinilo, cuánto se queda en
+blanco, cuánto se atreve a subir y, sobre todo, cuánto busca el beat: en Closing, dos de cada
+tres chutes suyos son PERFECT.
+
+No decide en cada frame sino cada cierto tiempo, como una persona que mira y reacciona; entre
+decisión y decisión sigue con el plan que tenía. Su azar sale de una semilla y no de
+`Math.random`, así que un partido se puede repetir exacto, y eso es lo que permite probarla.
 
 ## Lo que manda: que el ritmo sea justo
 
@@ -105,6 +117,7 @@ Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre e
 |---|---|
 | `verify/physics.ts` | Que el vinilo no se sale del campo ni se queda atrapado, que los goles se cuentan en el lado correcto, que el reloj acaba el partido o da paso al gol de oro, que ningún lado tiene ventaja y que el resultado es el mismo a 60 que a 120 Hz |
 | `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca y que el tiro sale con la potencia de ese juicio |
+| `verify/ai.ts` | Enfrenta los niveles entre sí y contra un rival quieto: que están ordenados, que los altos rematan más al ritmo, que nunca se atascan y que no se meten goles en propia |
 | `verify/data.ts` | Ida y vuelta de la copia de seguridad contra un SQLite de escritorio: que nada se pierde ni se mezcla y que se rechaza lo que hay que rechazar |
 | `verify/library.ts` | Las reglas de ajustes, calibración e historial |
 | `verify/migration.ts` | Que el SQL del esquema y las tablas de Drizzle describen lo mismo |
@@ -115,7 +128,8 @@ No comprueban si es divertido ni cómo suena: eso solo se sabe jugando.
 
 Todos los números de jugabilidad están en **`src/game/constants.ts`** y en ningún otro sitio:
 velocidades, gravedad, rebotes, fuerza del chut, tamaño de las porterías, duración del
-partido, tempo, ventanas de PERFECT y GOOD y cuánto premian. Cada uno lleva al lado para qué sirve.
+partido, tempo, ventanas de PERFECT y GOOD y cuánto premian, y la personalidad de cada nivel
+de la IA (`AI`). Cada uno lleva al lado para qué sirve.
 
 Para ver los fps y los milisegundos de trabajo por frame, `DEBUG.OVERLAY` en ese mismo fichero.
 
@@ -129,6 +143,7 @@ src/game/            El juego en sí. Sin React, sin Skia, sin nada nativo.
   state.ts           Estado inicial y saque.
   step.ts            La simulación: física, goles, reloj y remate al ritmo.
   beat.ts            La aritmética del beat (distancia, fase, juicio).
+  ai.ts              El rival: una fuente de inputs más, como los botones.
 src/audio/           La música y el reloj. Lo único que importa la librería de audio.
   engine.ts          El AudioContext y los buses.
   synth.ts           Los instrumentos y los efectos, sintetizados.
@@ -151,8 +166,8 @@ scripts/build-apk.sh Compila y firma el APK.
 Tres decisiones sostienen el resto:
 
 - **El juego no sabe de dónde vienen los inputs.** `stepGame` recibe un `InputFrame` por
-  jugador y le da igual que lo produzcan los botones táctiles, la IA o (más adelante) otro
-  móvil. Es lo que permitirá añadir dos jugadores sin tocar la física.
+  jugador y le da igual que lo produzcan los botones táctiles, la IA (`stepAi`) o (más
+  adelante) otro móvil. Es lo que permitirá añadir dos jugadores sin tocar la física.
 - **La simulación va a paso fijo** (120 pasos por segundo) y es determinista: los mismos
   inputs dan siempre el mismo partido. Se ve fluida en cualquier pantalla porque el dibujo se
   adelanta lo que quede sin simular.

@@ -9,6 +9,13 @@
 /** Niveles de la IA: Warm-up, Peak Time y Closing. */
 export type Level = 'warmup' | 'peak' | 'closing'
 
+export const LEVELS: Level[] = ['warmup', 'peak', 'closing']
+
+/** Para lo que llega de fuera (la ruta, una copia): ¿es un nivel de verdad? */
+export function isLevel(value: unknown): value is Level {
+  return typeof value === 'string' && (LEVELS as string[]).includes(value)
+}
+
 /** Un partido terminado. */
 export interface MatchRecord {
   id: string

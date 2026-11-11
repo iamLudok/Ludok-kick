@@ -144,6 +144,77 @@ export const BEAT = {
   MAX_OFFSET_MS: 500,
 }
 
+/**
+ * La personalidad de cada nivel de la IA. No es más rápida ni más fuerte que
+ * tú (juega con los mismos botones y la misma física): lo que cambia es cuánto
+ * tarda en reaccionar, cuánto se equivoca y cuánto afina con el ritmo.
+ */
+export const AI = {
+  /** Warm-up: lenta de reflejos, falla a menudo y casi nunca remata al ritmo. */
+  warmup: {
+    /** Cada cuánto «mira» y decide a dónde ir, en segundos, y cuánto varía. */
+    think: 0.3,
+    thinkJitter: 0.15,
+    /** Error típico al calcular dónde caerá el vinilo, en unidades de campo. */
+    aimError: 55,
+    /** Fracción de la velocidad máxima a la que se mueve. */
+    speed: 0.78,
+    /** Probabilidad, en cada decisión, de quedarse en blanco un momento. */
+    blunder: 0.2,
+    freeze: 0.45,
+    /** Probabilidad de ir a por un balón alto de cabeza en vez de esperarlo abajo. */
+    headSkill: 0.45,
+    /** Retraso aleatorio máximo entre tener el vinilo a tiro y chutar. */
+    kickSlop: 0.16,
+    /** Probabilidad de aguantar el chut hasta el siguiente beat. */
+    beatSkill: 0.1,
+    /**
+     * Probabilidad, en cada decisión, de ir a por el vinilo cuando está en tu
+     * campo; si no, se queda atrás guardando. Más no es mejor: presionando
+     * mucho la cogían a contrapié y se comía contraataques (y goles en propia).
+     */
+    pressure: 0.2,
+  },
+  /** Peak Time: un rival decente. */
+  peak: {
+    think: 0.18,
+    thinkJitter: 0.08,
+    aimError: 26,
+    speed: 0.92,
+    blunder: 0.08,
+    freeze: 0.3,
+    headSkill: 0.75,
+    kickSlop: 0.08,
+    beatSkill: 0.4,
+    pressure: 0.35,
+  },
+  /** Closing: reacciona rápido, falla poco y busca el beat casi siempre. */
+  closing: {
+    think: 0.1,
+    thinkJitter: 0.04,
+    aimError: 9,
+    speed: 1,
+    blunder: 0.03,
+    freeze: 0.18,
+    headSkill: 0.95,
+    kickSlop: 0.03,
+    beatSkill: 0.8,
+    pressure: 0.45,
+  },
+  /** Dónde espera cuando no va a por el vinilo: distancia a su propia pared. */
+  HOME_X: 240,
+  /** Segundos con el vinilo parado tras los que deja de buscar la jugada buena y va a por él. */
+  STALL: 2,
+  /** Lo máximo que aguanta un chut buscando el beat. Más, y se lo quitan. */
+  MAX_BEAT_WAIT: 0.3,
+  /**
+   * A qué distancia del beat da por buena la ocasión, en segundos. Más fino
+   * que la ventana PERFECT: su cuenta tiene algo de error y así no se le
+   * escapa por los pelos.
+   */
+  BEAT_AIM: 0.05,
+}
+
 export const CALIBRATION = {
   /**
    * Tempo del metrónomo de calibrar. Más lento que el del juego a propósito:

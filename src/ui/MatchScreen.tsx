@@ -2,23 +2,27 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppState, Pressable, StyleSheet, View, type AppStateStatus, type LayoutChangeEvent } from 'react-native'
 import { Canvas, Picture, createPicture, type SkPicture } from '@shopify/react-native-skia'
 import { useKeepAwake } from 'expo-keep-awake'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useFrameCallback, useSharedValue, type FrameInfo } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import { createAudioClock, readAudioClock, type AudioClock } from '../audio/clock'
 import { PROTOTYPE_PATTERN } from '../audio/patterns'
 import { useAudioSession } from '../audio/useAudioSession'
+import { createAi, stepAi, type AiState } from '../game/ai'
 import { beatPhase } from '../game/beat'
 import { BEAT, DEBUG, MATCH } from '../game/constants'
 import { createInitialState, emptyInput } from '../game/state'
 import { stepGame, type BeatInput } from '../game/step'
 import type { GameState, InputFrame, Phase } from '../game/types'
+import { addMatch } from '../lib/matches'
 import { useSettings } from '../hooks/useSettings'
-import { effectiveOffsetMs } from '../lib/settings'
+import { effectiveOffsetMs, updateSettings } from '../lib/settings'
+import { isLevel, type Level } from '../types'
 import { FX_LIFE, createPainter, drawFrame, type BeatView } from '../render/draw'
 import { PROTOTYPE_STAGE } from '../render/stage'
 import { Button } from './Button'
+import { LEVEL_NAME } from './labels'
 import { Txt } from './Text'
 import { TouchControls } from './TouchControls'
 import { palette, radius, space } from './theme'
@@ -41,6 +45,11 @@ const INITIAL_HUD: HudData = { score0: 0, score1: 0, seconds: MATCH.DURATION, ph
  */
 type Runtime = {
   game: GameState
+  ai: AiState
+  /** Remates a tiempo del jugador, para el historial. */
+  perfects: number
+  goods: number
+  saved: boolean
   hud: HudData
   clock: AudioClock
   beatIn: BeatInput
@@ -50,8 +59,8 @@ type Runtime = {
   perfWork: number
 }
 
-// El rival aún no tiene quién lo mueva: se queda quieto hasta que llegue la IA.
-const RIVAL_IDLE = emptyInput()
+/** Lo que se guarda en el historial al acabar. */
+type Final = { goalsFor: number; goalsAgainst: number; golden: boolean; perfects: number; goods: number }
 
 function clock(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -60,6 +69,8 @@ function clock(seconds: number): string {
 }
 
 export function MatchScreen() {
+  const params = useLocalSearchParams<{ nivel?: string }>()
+  const level: Level = isLevel(params.nivel) ? params.nivel : 'peak'
   const [size, setSize] = useState<{ width: number; height: number } | null>(null)
   const insets = useSafeAreaInsets()
   useKeepAwake()
@@ -80,14 +91,18 @@ export function MatchScreen() {
           width={size.width}
           height={size.height}
           insetX={Math.max(insets.left, insets.right)}
+          level={level}
         />
       )}
     </View>
   )
 }
 
-function Match({ width, height, insetX }: { width: number; height: number; insetX: number }) {
+function Match({ width, height, insetX, level }: { width: number; height: number; insetX: number; level: Level }) {
   const router = useRouter()
+  // La semilla del rival: cada partido, uno distinto. Se decide en JavaScript
+  // porque en el hilo de UI la IA no usa Math.random (ver `ai.ts`).
+  const seed = useSharedValue(Math.floor(Math.random() * 2 ** 31))
   const painter = useMemo(() => createPainter(width, height, insetX, PROTOTYPE_STAGE), [width, height, insetX])
   const runtime = useSharedValue<Runtime | null>(null)
   const input = useSharedValue<InputFrame>(emptyInput())
@@ -107,6 +122,26 @@ function Match({ width, height, insetX }: { width: number; height: number; inset
     offsetMs.value = effectiveOffset
   }, [effectiveOffset, offsetMs])
 
+  const onEnded = useCallback(
+    (f: Final) => {
+      // Un fallo al guardar no debe estropear la pantalla de fin: el partido
+      // ya se jugó, y lo peor que pasa es que no sale en el historial.
+      addMatch({
+        goalsFor: f.goalsFor,
+        goalsAgainst: f.goalsAgainst,
+        goldenGoal: f.golden,
+        perfects: f.perfects,
+        goods: f.goods,
+        level,
+      }).catch(() => undefined)
+    },
+    [level],
+  )
+
+  useEffect(() => {
+    updateSettings({ lastLevel: level }).catch(() => undefined)
+  }, [level])
+
   // Con `useCallback` la función es la misma entre renders. Sin él, cada vez
   // que cambia el marcador (una vez por segundo, con el reloj) React crea otra
   // y el bucle se vuelve a registrar en el hilo de UI con todos sus pinceles.
@@ -118,6 +153,10 @@ function Match({ width, height, insetX }: { width: number; height: number; inset
       if (!rt) {
         rt = {
           game: createInitialState(),
+          ai: createAi(level, seed.value),
+          perfects: 0,
+          goods: 0,
+          saved: false,
           hud: { score0: -1, score1: -1, seconds: -1, phase: 'kickoff', golden: false },
           clock: createAudioClock(),
           beatIn: { time: 0, t0: 0, bpm: BEAT.BPM },
@@ -151,7 +190,8 @@ function Match({ width, height, insetX }: { width: number; height: number; inset
         view.phase = -1
       }
 
-      stepGame(s, touch, RIVAL_IDLE, dt, beat)
+      const rival = stepAi(rt.ai, s, 1, dt)
+      stepGame(s, touch, rival, dt, beat)
 
       for (let i = view.fx.length - 1; i >= 0; i--) {
         view.fx[i].age += dt
@@ -161,6 +201,8 @@ function Match({ width, height, insetX }: { width: number; height: number; inset
         const ev = s.events[i]
         if (ev.type === 'kick' || ev.type === 'head') {
           scheduleOnRN(playHit, ev.judge)
+          if (ev.side === 0 && ev.judge === 2) rt.perfects++
+          if (ev.side === 0 && ev.judge === 1) rt.goods++
           if (ev.judge > 0) view.fx.push({ judge: ev.judge, x: ev.x, y: ev.y, age: 0 })
         } else if (ev.type === 'goal') {
           scheduleOnRN(playGoal)
@@ -168,6 +210,16 @@ function Match({ width, height, insetX }: { width: number; height: number; inset
       }
 
       const live = s.phase !== 'ended'
+      if (!live && !rt.saved) {
+        rt.saved = true
+        scheduleOnRN(onEnded, {
+          goalsFor: s.score[0],
+          goalsAgainst: s.score[1],
+          golden: s.golden,
+          perfects: rt.perfects,
+          goods: rt.goods,
+        })
+      }
       picture.value = createPicture((canvas) => {
         'worklet'
         drawFrame(canvas, s, painter, touch, live, view)
@@ -203,7 +255,7 @@ function Match({ width, height, insetX }: { width: number; height: number; inset
         }
       }
     },
-    [grid, input, offsetMs, painter, picture, playGoal, playHit, runtime, source],
+    [grid, input, level, offsetMs, onEnded, painter, picture, playGoal, playHit, runtime, seed, source],
   )
   const loop = useFrameCallback(onFrame)
 
@@ -219,9 +271,11 @@ function Match({ width, height, insetX }: { width: number; height: number; inset
   }, [loop])
 
   const restart = useCallback(() => {
-    // Basta con tirar el estado: el siguiente frame crea un partido nuevo.
+    // Basta con tirar el estado: el siguiente frame crea un partido nuevo, con
+    // un rival que no repetirá las mismas jugadas.
+    seed.value = Math.floor(Math.random() * 2 ** 31)
     runtime.value = null
-  }, [runtime])
+  }, [runtime, seed])
 
   const ended = hud.phase === 'ended'
 
@@ -278,7 +332,7 @@ function Match({ width, height, insetX }: { width: number; height: number; inset
       {ended && (
         <View style={styles.end}>
           <Txt variant="label" tone="muted">
-            Fin del partido
+            Fin del partido · {LEVEL_NAME[level]}
           </Txt>
           <Txt variant="banner">
             {hud.score0} – {hud.score1}
