@@ -50,11 +50,14 @@ export function beatPhase(time: number, t0: number, bpm: number): number {
   return beats - Math.floor(beats)
 }
 
-/** Juicio de un toque a `deltaSeconds` del beat, con las ventanas encogidas a este tempo. */
-export function judgeDelta(deltaSeconds: number, bpm: number): Judge {
+/**
+ * Juicio de un toque a `deltaSeconds` del beat, con las ventanas encogidas a
+ * este tempo. `timing` ensancha la ventana PERFECT (el DJ de minimal).
+ */
+export function judgeDelta(deltaSeconds: number, bpm: number, timing = 1): Judge {
   'worklet'
   const ms = Math.abs(deltaSeconds) * 1000 * speedAt(bpm)
-  if (ms <= BEAT.PERFECT_MS) return 2
+  if (ms <= BEAT.PERFECT_MS * timing) return 2
   if (ms <= BEAT.GOOD_MS) return 1
   return 0
 }

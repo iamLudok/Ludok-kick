@@ -69,11 +69,18 @@ export function clap(e: Engine, t: number, level = 0.32): void {
   amp.connect(e.music)
 }
 
-export function bass(e: Engine, t: number, freq: number, dur: number, level = 0.4): void {
+export function bass(
+  e: Engine,
+  t: number,
+  freq: number,
+  dur: number,
+  level = 0.4,
+  wave: 'sawtooth' | 'square' = 'sawtooth',
+): void {
   const osc = e.ctx.createOscillator()
   const lp = e.ctx.createBiquadFilter()
   const amp = e.ctx.createGain()
-  osc.type = 'sawtooth'
+  osc.type = wave
   osc.frequency.value = freq
   lp.type = 'lowpass'
   lp.Q.value = 4
@@ -111,6 +118,46 @@ export function stab(e: Engine, t: number, freqs: number[], dur: number, level =
       osc.stop(t + dur + 0.02)
     }
   }
+}
+
+/** Golpe metálico, de nave industrial: ruido muy estrecho y un tono corto. */
+export function metal(e: Engine, t: number, level = 0.16): void {
+  const src = noiseBurst(e, t, 0.09)
+  const bp = e.ctx.createBiquadFilter()
+  const amp = e.ctx.createGain()
+  bp.type = 'bandpass'
+  bp.frequency.value = 3400
+  bp.Q.value = 9
+  amp.gain.setValueAtTime(level * 2, t)
+  amp.gain.exponentialRampToValueAtTime(SILENCE, t + 0.09)
+  src.connect(bp)
+  bp.connect(amp)
+  amp.connect(e.music)
+  const osc = e.ctx.createOscillator()
+  const oamp = e.ctx.createGain()
+  osc.type = 'square'
+  osc.frequency.value = 540
+  oamp.gain.setValueAtTime(level * 0.5, t)
+  oamp.gain.exponentialRampToValueAtTime(SILENCE, t + 0.05)
+  osc.connect(oamp)
+  oamp.connect(e.music)
+  osc.start(t)
+  osc.stop(t + 0.07)
+}
+
+/** Golpe de madera, a lo txalaparta: un tono hueco que muere enseguida. */
+export function wood(e: Engine, t: number, level = 0.3): void {
+  const osc = e.ctx.createOscillator()
+  const amp = e.ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(820, t)
+  osc.frequency.exponentialRampToValueAtTime(640, t + 0.06)
+  amp.gain.setValueAtTime(level, t)
+  amp.gain.exponentialRampToValueAtTime(SILENCE, t + 0.09)
+  osc.connect(amp)
+  amp.connect(e.music)
+  osc.start(t)
+  osc.stop(t + 0.1)
 }
 
 /* --- Efectos: suenan «ya», no en un instante programado ------------------ */

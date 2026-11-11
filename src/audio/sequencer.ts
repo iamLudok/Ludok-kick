@@ -1,7 +1,7 @@
 import type { Bar } from '../game/types'
 import type { Engine } from './engine'
 import { note, type Pattern } from './patterns'
-import { bass, clap, hat, impact, kick, riser, stab } from './synth'
+import { bass, clap, hat, impact, kick, metal, riser, stab, wood } from './synth'
 
 /** Cada cuánto se despierta el secuenciador y con cuánta antelación programa. */
 const TICK_MS = 25
@@ -102,7 +102,13 @@ export function startSequencer(e: Engine, pattern: Pattern, opts: Options): Sequ
     if (on('hat16') && p.hat16.includes(step)) hat(voices, t, false, 0.09)
     if (on('hat16') && p.openHat.includes(step)) hat(voices, t, true, 0.14)
     if (on('clap') && p.clap.includes(step)) clap(voices, t)
-    if (on('bass') && step in p.bass && !building) bass(voices, t, note(chord.root + p.bass[step]), stepDur * 0.9)
+    if (on('bass') && step in p.bass && !building) {
+      bass(voices, t, note(chord.root + p.bass[step]), stepDur * 0.9, 0.4, p.bassWave)
+    }
+    if (on('perc') && p.perc.includes(step)) {
+      if (p.percVoice === 'wood') wood(voices, t)
+      else metal(voices, t)
+    }
     if (on('stab') && p.stab.includes(step) && chord.notes.length > 0) {
       stab(voices, t, chord.notes.map(note), stepDur * 3)
     }

@@ -32,6 +32,10 @@ export type PlayerStats = {
   speed: number
   jump: number
   kick: number
+  /** Multiplica la ventana PERFECT: más de 1, más fácil clavar el beat. */
+  timing: number
+  /** El poder propio del personaje; null para que toque al azar. */
+  power: PowerKind | null
 }
 
 export type PlayerState = {
@@ -62,6 +66,8 @@ export type PlayerState = {
   scratch: boolean
   /** Lo que le queda de cámara lenta (Low-pass del rival), en segundos de verdad. */
   slowT: number
+  /** Tras un Cue, lo que le queda hasta poder moverse otra vez. */
+  recoverT: number
 }
 
 export type BallState = {

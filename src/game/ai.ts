@@ -86,6 +86,8 @@ function wobble(ai: AiState): number {
 function predictX(s: GameState, targetY: number): number {
   'worklet'
   const b = s.ball
+  // En Loop el vinilo no se mueve de donde está.
+  if (b.loopT > 0) return b.x
   const R = BALL.R
   const dt = 1 / 60
   let x = b.x
@@ -134,8 +136,11 @@ function contactTime(s: GameState, side: Side): number {
     const px = p.x + p.vx * t
     const fx = px + f * Math.sin(a) * KICK.LEG
     const fy = p.y - KICK.HIP_Y + Math.cos(a) * KICK.LEG
-    const bx = b.x + b.vx * t
-    const by = Math.min(b.y + b.vy * t + 0.5 * BALL.GRAVITY * t * t, FIELD.GROUND_Y - BALL.R)
+    // En Loop el vinilo está quieto en el aire: sin esto la IA lo daba por
+    // cayendo y nunca acertaba el momento de chutarlo.
+    const loop = b.loopT > t
+    const bx = loop ? b.x : b.x + b.vx * t
+    const by = loop ? b.y : Math.min(b.y + b.vy * t + 0.5 * BALL.GRAVITY * t * t, FIELD.GROUND_Y - BALL.R)
     // Como en la física, el pie solo golpea lo que tiene delante.
     if ((bx - px) * f <= -6) continue
     const dx = bx - fx
@@ -205,12 +210,15 @@ function wantsPower(ai: AiState, s: GameState, side: Side): boolean {
     // El rival cerca del vinilo y el vinilo a su alcance: justo cuando importa.
     return Math.abs(opp.x - b.x) < 220 && Math.abs(p.x - b.x) < 420
   }
+  const towardOwnGoal = b.vx * -f
   if (kind === 'loop') {
-    // Con el vinilo bajo y un poco por delante: lo deja quieto a tiro de volea.
-    return ahead > 30 && ahead < 140 && b.y > FIELD.GROUND_Y - 140 && Math.abs(b.vx) < 500
+    // Sobre todo para salvar: un tiro que va a su portería y al que no llega,
+    // congelado en el aire mientras vuelve. Y si no, en ataque: con el vinilo
+    // bajo y un poco por delante, lo deja quieto a tiro de volea.
+    const save = towardOwnGoal > 300 && Math.abs(b.x - ownGoalX) < 380 && Math.abs(p.x - ownGoalX) > Math.abs(b.x - ownGoalX)
+    return save || (ahead > 30 && ahead < 140 && b.y > FIELD.GROUND_Y - 140 && Math.abs(b.vx) < 500)
   }
   // Cue: el vinilo va hacia su portería y él está lejos de ella, por detrás de la jugada.
-  const towardOwnGoal = b.vx * -f
   const farFromHome = Math.abs(p.x - ownGoalX) > 480
   const ballBehind = Math.abs(b.x - ownGoalX) < Math.abs(p.x - ownGoalX)
   return towardOwnGoal > 250 && farFromHome && ballBehind
@@ -323,7 +331,9 @@ export function stepAi(ai: AiState, s: GameState, side: Side, frameDt: number): 
       // tiempo de juego; el beat va en segundos de verdad.
       const contactAt = bt.now + (SIM.DT + c) / s.speed
       ai.patience -= dt
-      if (Math.abs(beatDelta(contactAt, bt.t0, bt.bpm)) <= AI.BEAT_AIM || ai.patience < 0) {
+      // Con un DJ de ventana más amplia (Minimal) se conforma con menos, como
+      // haría una persona que sabe que tiene margen.
+      if (Math.abs(beatDelta(contactAt, bt.t0, bt.bpm)) <= AI.BEAT_AIM * p.stats.timing || ai.patience < 0) {
         ai.patience = -1
         ai.kickHold = 0.08
       }

@@ -7,7 +7,6 @@ import { useFrameCallback, useSharedValue, type FrameInfo } from 'react-native-r
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import { createAudioClock, readAudioClock, type AudioClock } from '../audio/clock'
-import { PROTOTYPE_PATTERN } from '../audio/patterns'
 import { useAudioSession } from '../audio/useAudioSession'
 import { createAi, stepAi, type AiState } from '../game/ai'
 import { barAt, beatPhase, tempoAt } from '../game/beat'
@@ -18,11 +17,10 @@ import type { GameState, InputFrame, Phase } from '../game/types'
 import { addMatch } from '../lib/matches'
 import { useSettings } from '../hooks/useSettings'
 import { effectiveOffsetMs, updateSettings } from '../lib/settings'
-import { isLevel, type Level } from '../types'
 import { FX_LIFE, SHOCK_LIFE, createPainter, drawFrame, judgeLabel, powerLabel, type BeatView } from '../render/draw'
-import { PROTOTYPE_STAGE } from '../render/stage'
-import { Button } from './Button'
-import { LEVEL_NAME } from './labels'
+import { getDj } from '../content/djs'
+import { readSetup, resultParams, setupParams, type MatchResult, type MatchSetup } from '../content/setup'
+import { getStage } from '../content/stages'
 import { Txt } from './Text'
 import { TouchControls } from './TouchControls'
 import { palette, radius, space } from './theme'
@@ -63,9 +61,10 @@ type DropInfo = { goal: number; at: number }
 type Runtime = {
   game: GameState
   ai: AiState
-  /** Remates a tiempo del jugador, para el historial. */
+  /** Remates a tiempo y poderes del jugador, para el resultado. */
   perfects: number
   goods: number
+  powers: number
   saved: boolean
   hud: HudData
   clock: AudioClock
@@ -77,7 +76,8 @@ type Runtime = {
 }
 
 /** Lo que se guarda en el historial al acabar. */
-type Final = { goalsFor: number; goalsAgainst: number; golden: boolean; perfects: number; goods: number }
+/** Cuánto se espera, con el marcador final a la vista, antes de pasar al resultado. */
+const END_PAUSE_MS = 1400
 
 function clock(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -86,8 +86,10 @@ function clock(seconds: number): string {
 }
 
 export function MatchScreen() {
-  const params = useLocalSearchParams<{ nivel?: string }>()
-  const level: Level = isLevel(params.nivel) ? params.nivel : 'peak'
+  const params = useLocalSearchParams()
+  // Se lee una sola vez: si el rival saliera al azar en cada render, cambiaría
+  // a mitad de partido.
+  const [setup] = useState(() => readSetup(params))
   const [size, setSize] = useState<{ width: number; height: number } | null>(null)
   const insets = useSafeAreaInsets()
   useKeepAwake()
@@ -108,19 +110,26 @@ export function MatchScreen() {
           width={size.width}
           height={size.height}
           insetX={Math.max(insets.left, insets.right)}
-          level={level}
+          setup={setup}
         />
       )}
     </View>
   )
 }
 
-function Match({ width, height, insetX, level }: { width: number; height: number; insetX: number; level: Level }) {
+function Match({ width, height, insetX, setup }: { width: number; height: number; insetX: number; setup: MatchSetup }) {
   const router = useRouter()
+  const level = setup.level
+  const stage = getStage(setup.stage)
+  const me = getDj(setup.dj)
+  const rivalDj = getDj(setup.rival)
   // La semilla del rival: cada partido, uno distinto. Se decide en JavaScript
   // porque en el hilo de UI la IA no usa Math.random (ver `ai.ts`).
   const seed = useSharedValue(Math.floor(Math.random() * 2 ** 31))
-  const painter = useMemo(() => createPainter(width, height, insetX, PROTOTYPE_STAGE), [width, height, insetX])
+  const painter = useMemo(
+    () => createPainter(width, height, insetX, stage, [me.look, rivalDj.look]),
+    [width, height, insetX, stage, me, rivalDj],
+  )
   const runtime = useSharedValue<Runtime | null>(null)
   const input = useSharedValue<InputFrame>(emptyInput())
   const picture = useSharedValue<SkPicture>(painter.blank)
@@ -132,8 +141,8 @@ function Match({ width, height, insetX, level }: { width: number; height: number
   // música al empezar cada compás para decidir su tempo.
   const progress = useSharedValue(0)
   const tempo = useCallback(() => tempoAt(progress.value), [progress])
-  const audio = useAudioSession(PROTOTYPE_PATTERN, tempo, { music: settings.musicVolume, sfx: settings.sfxVolume })
-  const { source, bars, playHit, playGoal, playPower, playCharged, drop: prepareDrop, restart: restartMusic } = audio
+  const audio = useAudioSession(stage.pattern, tempo, { music: settings.musicVolume, sfx: settings.sfxVolume })
+  const { source, bars, playHit, playGoal, playPower, playCharged, drop: prepareDrop } = audio
   const dropInfo = useSharedValue<DropInfo>({ goal: -1, at: -1 })
 
   // Al marcar, la música decide cuándo cae el drop (en un beat) y se lo dice
@@ -156,24 +165,32 @@ function Match({ width, height, insetX, level }: { width: number; height: number
   }, [effectiveOffset, offsetMs])
 
   const onEnded = useCallback(
-    (f: Final) => {
-      // Un fallo al guardar no debe estropear la pantalla de fin: el partido
-      // ya se jugó, y lo peor que pasa es que no sale en el historial.
+    (r: MatchResult) => {
+      // Un fallo al guardar no debe impedir ver el resultado: el partido ya se
+      // jugó, y lo peor que pasa es que no sale en el historial.
       addMatch({
-        goalsFor: f.goalsFor,
-        goalsAgainst: f.goalsAgainst,
-        goldenGoal: f.golden,
-        perfects: f.perfects,
-        goods: f.goods,
+        goalsFor: r.goalsFor,
+        goalsAgainst: r.goalsAgainst,
+        goldenGoal: r.golden,
+        perfects: r.perfects,
+        goods: r.goods,
         level,
+        dj: setup.dj,
+        rivalDj: setup.rival,
+        stage: setup.stage,
       }).catch(() => undefined)
+      // Un momento con el marcador final a la vista y luego al resultado. Con
+      // `replace`, «atrás» desde el resultado no vuelve a un partido acabado.
+      setTimeout(() => {
+        router.replace({ pathname: '/resultado', params: { ...setupParams(setup), ...resultParams(r) } })
+      }, END_PAUSE_MS)
     },
-    [level],
+    [level, router, setup],
   )
 
   useEffect(() => {
-    updateSettings({ lastLevel: level }).catch(() => undefined)
-  }, [level])
+    updateSettings({ lastLevel: level, lastDj: setup.dj, lastStage: setup.stage }).catch(() => undefined)
+  }, [level, setup])
 
   // Con `useCallback` la función es la misma entre renders. Sin él, cada vez
   // que cambia el marcador (una vez por segundo, con el reloj) React crea otra
@@ -186,10 +203,11 @@ function Match({ width, height, insetX, level }: { width: number; height: number
       if (!rt) {
         rt = {
           // La misma semilla que el rival: cada partido reparte poderes distintos.
-          game: createInitialState(undefined, undefined, seed.value),
+          game: createInitialState(me.stats, rivalDj.stats, seed.value),
           ai: createAi(level, seed.value),
           perfects: 0,
           goods: 0,
+          powers: 0,
           saved: false,
           hud: {
             score0: -1,
@@ -257,6 +275,7 @@ function Match({ width, height, insetX, level }: { width: number; height: number
           if (ev.side === 0 && ev.judge === 1) rt.goods++
           if (ev.judge > 0) view.fx.push({ label: judgeLabel(ev.judge), x: ev.x, y: ev.y, age: 0 })
         } else if (ev.type === 'power') {
+          if (ev.side === 0) rt.powers++
           scheduleOnRN(playPower, ev.kind)
           view.fx.push({ label: powerLabel(ev.kind), x: ev.x, y: ev.y, age: 0 })
         } else if (ev.type === 'charged') {
@@ -280,6 +299,7 @@ function Match({ width, height, insetX, level }: { width: number; height: number
           golden: s.golden,
           perfects: rt.perfects,
           goods: rt.goods,
+          powers: rt.powers,
         })
       }
       picture.value = createPicture((canvas) => {
@@ -363,16 +383,6 @@ function Match({ width, height, insetX, level }: { width: number; height: number
     return () => sub.remove()
   }, [loop])
 
-  const restart = useCallback(() => {
-    // Basta con tirar el estado: el siguiente frame crea un partido nuevo, con
-    // un rival que no repetirá las mismas jugadas.
-    seed.value = Math.floor(Math.random() * 2 ** 31)
-    progress.value = 0
-    dropInfo.value = { goal: -1, at: -1 }
-    restartMusic()
-    runtime.value = null
-  }, [dropInfo, progress, restartMusic, runtime, seed])
-
   const ended = hud.phase === 'ended'
 
   return (
@@ -385,17 +395,17 @@ function Match({ width, height, insetX, level }: { width: number; height: number
 
       <View style={styles.hud} pointerEvents="none">
         <View style={styles.scoreboard}>
-          <EnergyBar value={hud.energy0} color={PROTOTYPE_STAGE.players[0]} />
-          <Txt variant="score" style={{ color: PROTOTYPE_STAGE.players[0] }}>
+          <EnergyBar value={hud.energy0} color={me.look.jersey} full={stage.palette.power} />
+          <Txt variant="score" style={{ color: me.look.jersey }}>
             {hud.score0}
           </Txt>
           <Txt variant={hud.golden ? 'label' : 'score'} tone={hud.golden ? 'brand' : 'fg'} style={styles.clock}>
             {hud.golden ? 'Gol de oro' : clock(hud.seconds)}
           </Txt>
-          <Txt variant="score" style={{ color: PROTOTYPE_STAGE.players[1] }}>
+          <Txt variant="score" style={{ color: rivalDj.look.jersey }}>
             {hud.score1}
           </Txt>
-          <EnergyBar value={hud.energy1} color={PROTOTYPE_STAGE.players[1]} />
+          <EnergyBar value={hud.energy1} color={rivalDj.look.jersey} full={stage.palette.power} />
         </View>
         {/* El tempo a la vista: sube a lo largo del partido y se nota en el juego. */}
         <Txt variant="data" tone="muted" style={styles.bpm}>
@@ -430,21 +440,6 @@ function Match({ width, height, insetX, level }: { width: number; height: number
           </Txt>
         </Pressable>
       )}
-
-      {ended && (
-        <View style={styles.end}>
-          <Txt variant="label" tone="muted">
-            Fin del partido · {LEVEL_NAME[level]}
-          </Txt>
-          <Txt variant="banner">
-            {hud.score0} – {hud.score1}
-          </Txt>
-          <View style={styles.endButtons}>
-            <Button title="Menú" kind="secondary" onPress={() => router.back()} />
-            <Button title="Otra vez" onPress={restart} />
-          </View>
-        </View>
-      )}
     </View>
   )
 }
@@ -453,14 +448,14 @@ function Match({ width, height, insetX, level }: { width: number; height: number
  * La barra de energía de cada jugador, junto a su marcador. Llena, se enciende
  * del color de los poderes: ese jugador tiene uno listo.
  */
-function EnergyBar({ value, color }: { value: number; color: string }) {
+function EnergyBar({ value, color, full: fullColor }: { value: number; color: string; full: string }) {
   const full = value >= 1
   return (
     <View style={styles.energy}>
       <View
         style={[
           styles.energyFill,
-          { width: `${Math.round(Math.max(0, value) * 100)}%`, backgroundColor: full ? PROTOTYPE_STAGE.power : color },
+          { width: `${Math.round(Math.max(0, value) * 100)}%`, backgroundColor: full ? fullColor : color },
         ]}
       />
     </View>
@@ -495,12 +490,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: palette.hud,
   },
-  end: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: palette.scrim,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.md,
-  },
-  endButtons: { flexDirection: 'row', gap: space.md },
 })

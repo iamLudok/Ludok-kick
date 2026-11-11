@@ -235,13 +235,15 @@ export const AI = {
 
 /** Poderes de DJ y su barra de energía. */
 export const POWER = {
+  /** Cada DJ lanza siempre su poder propio. Con false, el poder sale al azar entre los cuatro. */
+  SIGNATURE: true,
   /** Energía por remate PERFECT (la barra va de 0 a 1): con 0,25 se llena con cuatro. */
   PER_PERFECT: 0.25,
   /** Scratch: el siguiente tiro gira su trayectoria a este ritmo (radianes por segundo) durante CURVE_TIME. */
-  CURVE_RATE: 1.9,
+  CURVE_RATE: 2.2,
   CURVE_TIME: 0.8,
   /** Low-pass: el rival va a esta fracción de su velocidad durante este tiempo (segundos de verdad). */
-  SLOW_FACTOR: 0.45,
+  SLOW_FACTOR: 0.55,
   LOWPASS_TIME: 3,
   /**
    * Loop: el vinilo se queda flotando donde está durante LOOP_TIME. Si estaba
@@ -250,6 +252,12 @@ export const POWER = {
    * es enorme) y al acercarse a chutar la cabeza lo apartaba antes que el pie.
    */
   LOOP_TIME: 1.5,
+  /**
+   * Cue: tras volver a su sitio, el jugador tarda esto en poder moverse. Sin
+   * este instante de recuperación el Cue era claramente el poder más fuerte:
+   * una defensa perfecta en cualquier momento.
+   */
+  CUE_RECOVER: 0.2,
   LOOP_HEIGHT: 45,
 }
 

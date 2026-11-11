@@ -313,8 +313,9 @@ function onTouch(s: GameState, p: PlayerState, judge: Judge): void {
   if (judge === 2 && p.power === null) {
     p.energy = Math.min(1, p.energy + POWER.PER_PERFECT)
     if (p.energy >= 1) {
-      // Al azar por ahora; con los personajes, cada DJ podrá tener el suyo.
-      p.power = POWER_KINDS[Math.floor(nextRandom(s) * POWER_KINDS.length)]
+      // El poder propio del DJ, o uno al azar si no tiene (o si se juega así).
+      const own = POWER.SIGNATURE ? p.stats.power : null
+      p.power = own !== null ? own : POWER_KINDS[Math.floor(nextRandom(s) * POWER_KINDS.length)]
       s.events.push({ type: 'charged', side: p.side, kind: p.power })
     }
   }
@@ -344,16 +345,17 @@ function usePower(s: GameState, p: PlayerState): void {
     p.vy = 0
     p.grounded = true
     p.kickT = -1
+    p.recoverT = POWER.CUE_RECOVER
   }
   s.events.push({ type: 'power', side: p.side, kind, x: fromX, y: fromY })
 }
 
 /** Cómo de a tiempo cae un toque que ocurre en este mismo paso. */
-function judgeTouch(s: GameState): Judge {
+function judgeTouch(s: GameState, p: PlayerState): Judge {
   'worklet'
   const bt = s.beat
   if (!bt.on) return 0
-  return judgeDelta(beatDelta(bt.now, bt.t0, bt.bpm), bt.bpm)
+  return judgeDelta(beatDelta(bt.now, bt.t0, bt.bpm), bt.bpm, p.stats.timing)
 }
 
 function ballVsPlayer(s: GameState, p: PlayerState): void {
@@ -374,7 +376,7 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
     const rr = KICK.FOOT_R + BALL.R
     if (dx * dx + dy * dy < rr * rr) {
       const t = clamp(p.kickT / KICK.DURATION, 0, 1)
-      const judge = judgeTouch(s)
+      const judge = judgeTouch(s, p)
       const power = p.stats.kick * judgePower(judge)
       b.vx = p.facing * KICK.VX * lerp(KICK.FLAT_VX, KICK.LOB_VX, t) * power + pvx * KICK.INHERIT
       b.vy = -KICK.VY * lerp(KICK.FLAT_LIFT, KICK.LOB_LIFT, t) * power
@@ -400,7 +402,7 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
   )
   if (headed && p.touchCd <= 0) {
     p.touchCd = 0.15
-    const judge = judgeTouch(s)
+    const judge = judgeTouch(s, p)
     const power = judgePower(judge)
     b.vx *= power
     b.vy *= power
@@ -610,7 +612,9 @@ function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number, realDt
   const live = s.phase === 'play'
   for (let i = 0; i < 2; i++) {
     const p = s.players[i]
-    const inp = live ? (i === 0 ? in0 : in1) : IDLE
+    // Recién llegado de un Cue no responde a los botones durante un instante.
+    if (p.recoverT > 0) p.recoverT -= realDt
+    const inp = live && p.recoverT <= 0 ? (i === 0 ? in0 : in1) : IDLE
     // El poder se lanza al pulsar, no mientras se mantiene el botón.
     if (inp.power && !p.powerHeld) usePower(s, p)
     p.powerHeld = inp.power

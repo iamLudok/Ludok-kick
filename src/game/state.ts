@@ -1,7 +1,7 @@
 import { BALL, BEAT, FIELD, MATCH, PLAYER } from './constants'
 import type { GameState, InputFrame, PlayerState, PlayerStats, Side } from './types'
 
-export const BASE_STATS: PlayerStats = { speed: 1, jump: 1, kick: 1 }
+export const BASE_STATS: PlayerStats = { speed: 1, jump: 1, kick: 1, timing: 1, power: null }
 
 export function emptyInput(): InputFrame {
   'worklet'
@@ -29,12 +29,13 @@ function createPlayer(side: Side, stats: PlayerStats): PlayerState {
     touchCd: 0,
     // Copia: el estado se muta en cada paso y no debe compartir objeto con la
     // ficha del personaje.
-    stats: { speed: stats.speed, jump: stats.jump, kick: stats.kick },
+    stats: { speed: stats.speed, jump: stats.jump, kick: stats.kick, timing: stats.timing, power: stats.power },
     energy: 0,
     power: null,
     powerHeld: false,
     scratch: false,
     slowT: 0,
+    recoverT: 0,
   }
 }
 
@@ -82,6 +83,7 @@ export function resetForKickoff(s: GameState): void {
     // saque a otro: se pagaron con remates y no deben perderse por un gol. La
     // cámara lenta, en cambio, se corta: el saque empieza limpio.
     p.slowT = 0
+    p.recoverT = 0
   }
   const b = s.ball
   b.x = FIELD.W / 2

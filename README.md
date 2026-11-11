@@ -18,7 +18,7 @@ siguiente.
 | 3 | IA con tres niveles (Warm-up, Peak Time, Closing) e historial de partidos | Hecha |
 | 4 | Drops en los goles y BPM que sube con el partido | Hecha |
 | 5 | Poderes de DJ y barra de energía | Hecha |
-| 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Pendiente |
+| 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Hecha |
 | 7 | Pulido: partículas, sacudida de cámara, icono y splash | Pendiente |
 
 ## Cómo se juega
@@ -41,10 +41,36 @@ siguiente.
   onda expansiva lanza por los aires al que encajó y tiembla la cámara. Luego se saca.
 - Empate al acabar el tiempo: gol de oro.
 
+## Los DJs
+
+Cuatro personajes inventados, con un matiz de juego y un poder propio cada uno:
+
+| DJ | Estilo | Ventaja | Poder |
+|---|---|---|---|
+| **Burdina** | Hard techno | Tiro un 15 % más fuerte | Scratch |
+| **Txiki** | Minimal | Ventana PERFECT un 25 % más amplia | Loop |
+| **Ilargi** | Trance | Salto un 8 % más alto | Low-pass |
+| **Etxe** | House | Corre un 8 % más rápido | Cue |
+
+Se distinguen por la silueta (rapado con gafas de sol, gorro de lana con gafas redondas,
+melena con cinta, pelo rizado) y no solo por el color. El rival es otro DJ al azar. Para que el
+poder salga al azar en vez de ser el del DJ, `POWER.SIGNATURE` en `src/game/constants.ts`.
+
+## Los escenarios
+
+| Escenario | Cómo se ve | Qué suena |
+|---|---|---|
+| **Warehouse, Bilbao** | Nave industrial: ventanales, pilares de acero, luz de sodio | Techno industrial: bajo rodante y golpes de metal |
+| **Atardecer, Donostia** | La bahía al atardecer: el sol sobre el mar, la isla, los montes | House melódico: acordes cálidos y bajo con groove |
+| **Caserío rave** | Muro de piedra, cercha de madera y guirnaldas de bombillas | Rave: bajo a contratiempo y madera a lo txalaparta |
+
+Todo está dibujado y sintetizado por código. En todos, el bombo va en las cuatro negras: son
+los beats contra los que se juzga el remate.
+
 ## Poderes de DJ
 
 Cada remate PERFECT llena un cuarto de la barra de energía (el anillo del botón central y la
-barra junto a tu marcador). Llena, te toca un poder al azar, que aparece en el botón; se lanza
+barra junto a tu marcador). Llena, te toca el poder de tu DJ, que aparece en el botón; se lanza
 al pulsarlo.
 
 | Poder | Qué hace |
@@ -52,7 +78,7 @@ al pulsarlo.
 | **Scratch** | Tu siguiente tiro, de pie o de cabeza, lleva un efecto que lo hunde hacia la portería. Se queda preparado hasta que tocas el vinilo, aunque haya un gol por medio |
 | **Low-pass** | El rival va a cámara lenta durante 3 s y la música se amortigua, menos el bombo, para que el beat se siga oyendo |
 | **Loop** | El vinilo se queda flotando 1,5 s donde esté; si iba por el suelo, sube a altura de volea. Tocarlo rompe el loop |
-| **Cue** | Vuelves al instante a tu posición de saque |
+| **Cue** | Vuelves al instante a tu posición de saque (con 0,2 s para recolocarte antes de poder moverte) |
 
 La IA también carga energía con sus PERFECT y usa sus poderes: los niveles altos esperan al
 momento bueno (el Cue para volver a defender, el Loop con el vinilo delante, el Low-pass en
@@ -145,6 +171,7 @@ Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre e
 | `verify/physics.ts` | Que el vinilo no se sale del campo ni se queda atrapado, que los goles se cuentan en el lado correcto, que el reloj acaba el partido o da paso al gol de oro, que ningún lado tiene ventaja y que el resultado es el mismo a 60 que a 120 Hz |
 | `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca, que el tiro sale con su potencia, que el tempo sube y encoge las ventanas, y que el drop cae cuando dice la música |
 | `verify/powers.ts` | La barra de energía (solo la llenan los PERFECT) y cada poder: que se lanza una vez por pulsación, que el Scratch hunde el tiro, que el Low-pass ralentiza solo al rival y se pasa, que el Loop deja el vinilo a tiro y se rompe al tocarlo, y que el Cue te devuelve a tu sitio |
+| `verify/characters.ts` | Que cada DJ tiene su ventaja y su poder, que ninguno gana o pierde casi siempre (la IA contra sí misma con cada pareja de DJs), que todas las bases dejan el bombo en las negras y que lo que llega por la ruta se lee bien aunque venga roto |
 | `verify/sequencer.ts` | La música, con un motor de audio de mentira que apunta qué se programa: bombos en los beats, tempo que cambia solo entre compases, drop en un beat y sin bombo ni bajo durante la subida |
 | `verify/ai.ts` | Enfrenta los niveles entre sí y contra un rival quieto: que están ordenados, que los altos rematan más al ritmo, que nunca se atascan y que no se meten goles en propia |
 | `verify/data.ts` | Ida y vuelta de la copia de seguridad contra un SQLite de escritorio: que nada se pierde ni se mezcla y que se rechaza lo que hay que rechazar |
@@ -165,7 +192,7 @@ Para ver los fps y los milisegundos de trabajo por frame, `DEBUG.OVERLAY` en ese
 ## Estructura
 
 ```
-app/                 Rutas (expo-router): menú, partido y ajustes.
+app/                 Rutas (expo-router): menú, elegir, partido, resultado y ajustes.
 src/game/            El juego en sí. Sin React, sin Skia, sin nada nativo.
   constants.ts       Toda la configuración de jugabilidad.
   types.ts           El estado del partido y el InputFrame.
@@ -181,7 +208,13 @@ src/audio/           La música y el reloj. Lo único que importa la librería d
   sequencer.ts       Programa las notas con antelación, compás a compás, y prepara los drops.
   clock.ts           El reloj de audio leído desde el hilo del juego.
   useAudioSession.ts Enciende y apaga todo con la pantalla y con la app.
+src/content/         Los DJs y los escenarios: nombres, ventajas, colores, decorado y música.
+  djs.ts             Los cuatro DJs.
+  stages.ts          Los tres escenarios.
+  setup.ts           Lo que define un partido, de ida y vuelta por la ruta.
 src/render/          Cómo se ve. Todo pintado por código con Skia.
+  characters.ts      Los DJs: cabeza, peinados, gafas, retratos.
+  decor.ts           Los decorados de fondo de cada escenario.
   draw.ts            Una función por cosa que se pinta (jugador, vinilo, botones…).
   stage.ts           La paleta del escenario.
   view.ts            Cómo encaja el campo en la pantalla y dónde van los botones.

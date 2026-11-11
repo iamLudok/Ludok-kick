@@ -24,7 +24,10 @@ import { BALL, FIELD, GOAL, KICK, PLAYER } from '../game/constants'
 import { kickAngle } from '../game/step'
 import type { GameState, InputFrame, Judge, PlayerState, PowerKind } from '../game/types'
 import { palette } from '../ui/theme'
-import type { StagePalette } from './stage'
+import type { DjLook } from '../content/djs'
+import { createDjPaints, drawHead, type DjPaints } from './characters'
+import { drawDecor } from './decor'
+import type { StageDecor, StagePalette } from './stage'
 import { fitWorld, layoutControls, type ControlsLayout, type Point, type View } from './view'
 
 type Bounds = { x: number; y: number; width: number; height: number }
@@ -74,13 +77,10 @@ export type Painter = {
   shadow: SkPaint
   outline: SkPaint
   thinOutline: SkPaint
-  skin: SkPaint
   white: SkPaint
+  /** Pinceles de cada DJ: el de la izquierda y el de la derecha. */
+  djs: [DjPaints, DjPaints]
   dark: SkPaint
-  band: SkPaint
-  brow: SkPaint
-  jersey: [SkPaint, SkPaint]
-  leg: [SkPaint, SkPaint]
   vinyl: SkPaint
   vinylRim: SkPaint
   vinylGroove: SkPaint
@@ -166,16 +166,18 @@ function drawGoal(canvas: SkCanvas, st: StagePalette): void {
   canvas.drawLine(0, backY, GOAL.DEPTH, barY, stroke(st.bar, GOAL.BAR_R * 2))
 }
 
-function recordBackground(v: View, st: StagePalette, bounds: Bounds): SkPicture {
+function recordBackground(v: View, st: StagePalette, decor: StageDecor, bounds: Bounds): SkPicture {
   return createPicture((canvas) => {
     const groundY = v.oy + FIELD.GROUND_Y * v.scale
 
+    // El degradado va del techo del campo al suelo, no de la pantalla: así el
+    // horizonte del atardecer cae siempre a la misma altura del campo.
     const wall = Skia.Paint()
     wall.setShader(
       Skia.Shader.MakeLinearGradient(
-        { x: 0, y: 0 },
+        { x: 0, y: v.oy },
         { x: 0, y: groundY },
-        [Skia.Color(st.wallTop), Skia.Color(st.wallBottom)],
+        st.wall.map((c) => Skia.Color(c)),
         null,
         TileMode.Clamp,
       ),
@@ -185,6 +187,8 @@ function recordBackground(v: View, st: StagePalette, bounds: Bounds): SkPicture 
     canvas.save()
     canvas.translate(v.ox, v.oy)
     canvas.scale(v.scale, v.scale)
+
+    drawDecor(canvas, decor, st)
 
     // Haces de los focos, muy tenues: dan ambiente sin competir con el vinilo.
     const beam = fill(st.beam)
@@ -268,7 +272,20 @@ function powerIcons(c: Point, r: number): Record<PowerKind, SkPath> {
   return { scratch, lowpass, loop, cue }
 }
 
-export function createPainter(sw: number, sh: number, insetX: number, st: StagePalette): Painter {
+/**
+ * El escenario entero en pequeño, para la pantalla de selección: el mismo
+ * fondo que en el partido, sin jugadores ni botones.
+ */
+export function recordStagePreview(width: number, height: number, stage: StageLook): SkPicture {
+  const view = fitWorld(width, height, 0)
+  return recordBackground(view, stage.palette, stage.decor, { x: 0, y: 0, width, height })
+}
+
+/** Lo que hace falta del escenario para pintarlo. */
+export type StageLook = { palette: StagePalette; decor: StageDecor }
+
+export function createPainter(sw: number, sh: number, insetX: number, stage: StageLook, djs: [DjLook, DjLook]): Painter {
+  const st = stage.palette
   const view = fitWorld(sw, sh, insetX)
   const controls = layoutControls(view, insetX)
   const bounds = { x: 0, y: 0, width: sw, height: sh }
@@ -285,18 +302,14 @@ export function createPainter(sw: number, sh: number, insetX: number, st: StageP
     view,
     controls,
     bounds,
-    background: recordBackground(view, st, bounds),
+    background: recordBackground(view, st, stage.decor, bounds),
     blank: createPicture(() => {}, bounds),
     shadow,
     outline: stroke(st.outline, 3),
     thinOutline: stroke(st.outline, 2),
-    skin: fill(st.skin),
     white: fill('#ffffff'),
     dark: fill(st.outline),
-    band: stroke(st.outline, 7),
-    brow: stroke(st.outline, 3.5),
-    jersey: [fill(st.players[0]), fill(st.players[1])],
-    leg: [stroke(st.players[0], 9), stroke(st.players[1], 9)],
+    djs: [createDjPaints(djs[0], st.outline), createDjPaints(djs[1], st.outline)],
     vinyl: fill('#08060c'),
     vinylRim: stroke(st.vinylRim, 2),
     vinylGroove: stroke(st.vinylGroove, 1.2),
@@ -369,16 +382,15 @@ function drawShoe(canvas: SkCanvas, k: Painter, x: number, y: number, facing: nu
 
 function drawPlayer(canvas: SkCanvas, k: Painter, p: PlayerState, ahead: number, ballX: number, ballY: number): void {
   'worklet'
+  const d = k.djs[p.side]
   const f = p.facing
   const x = p.x + p.vx * ahead
   const y = Math.min(p.y + p.vy * ahead, FIELD.GROUND_Y)
-  const cy = y - PLAYER.HEAD_CY
-  const R = PLAYER.HEAD_R
 
   // Pie de apoyo, detrás del cuerpo.
   drawShoe(canvas, k, x - f * 11, y - 8, f, 0)
 
-  canvas.drawRRect({ rect: { x: x - 15, y: y - 38, width: 30, height: 30 }, rx: 9, ry: 9 }, k.jersey[p.side])
+  canvas.drawRRect({ rect: { x: x - 15, y: y - 38, width: 30, height: 30 }, rx: 9, ry: 9 }, d.jersey)
   canvas.drawRRect({ rect: { x: x - 15, y: y - 38, width: 30, height: 30 }, rx: 9, ry: 9 }, k.outline)
 
   // Pie que chuta: en reposo descansa en el suelo; durante el barrido sigue
@@ -387,36 +399,13 @@ function drawPlayer(canvas: SkCanvas, k: Painter, p: PlayerState, ahead: number,
     const a = kickAngle(p)
     const fx = x + f * Math.sin(a) * KICK.LEG
     const fy = y - KICK.HIP_Y + Math.cos(a) * KICK.LEG
-    canvas.drawLine(x + f * 4, y - 26, fx, fy, k.leg[p.side])
+    canvas.drawLine(x + f * 4, y - 26, fx, fy, d.leg)
     drawShoe(canvas, k, fx, fy, f, (-a * f * 180) / Math.PI)
   } else {
     drawShoe(canvas, k, x + f * 11, y - 8, f, 0)
   }
 
-  canvas.drawCircle(x, cy, R, k.skin)
-  canvas.drawCircle(x, cy, R, k.outline)
-
-  // Auriculares: la diadema por encima y el casco en la sien.
-  canvas.drawArc({ x: x - R + 2, y: cy - R + 2, width: (R - 2) * 2, height: (R - 2) * 2 }, -160, 140, false, k.band)
-  // Bien atrás, lejos del ojo: más centrado, los dos círculos juntos se leían
-  // como unas gafas y no como un auricular.
-  canvas.drawCircle(x - f * 19, cy + 5, 12, k.jersey[p.side])
-  canvas.drawCircle(x - f * 19, cy + 5, 12, k.outline)
-  canvas.drawCircle(x - f * 19, cy + 5, 4.5, k.dark)
-
-  // El ojo sigue al vinilo: es poca cosa, pero hace que el muñeco parezca atento.
-  const ex = x + f * 17
-  const ey = cy - 5
-  let lx = ballX - ex
-  let ly = ballY - ey
-  const len = Math.sqrt(lx * lx + ly * ly) || 1
-  lx = (lx / len) * 3.5
-  ly = (ly / len) * 3.5
-  canvas.drawCircle(ex, ey, 9.5, k.white)
-  canvas.drawCircle(ex, ey, 9.5, k.thinOutline)
-  canvas.drawCircle(ex + lx, ey + ly, 4.5, k.dark)
-  canvas.drawLine(x + f * 7, cy - 21, x + f * 27, cy - 15, k.brow)
-  canvas.drawLine(x + f * 14, cy + 17, x + f * 26, cy + 15, k.brow)
+  drawHead(canvas, d, x, y - PLAYER.HEAD_CY, f, ballX, ballY)
 }
 
 function drawVinyl(canvas: SkCanvas, k: Painter, x: number, y: number, angle: number): void {
