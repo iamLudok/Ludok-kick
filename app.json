@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.ludok.kick",
-      "versionCode": 19,
+      "versionCode": 20,
       "adaptiveIcon": {
         "backgroundColor": "#7A45C4",
         "foregroundImage": "./assets/android-icon-foreground.png",
