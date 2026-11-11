@@ -1,318 +1,381 @@
+<div align="center">
+
+<img src="assets/icon.png" alt="Ludok Kick icon" width="96">
+
 # Ludok Kick
 
-Un 1 contra 1 arcade de DJs cabezones. Vista lateral, partidos de 90 segundos, la pelota es
-un vinilo y las porterías son bafles. La música no va de fondo: marca el ritmo del partido y
-premia rematar a tiempo.
+**A 1v1 arcade football game for Android where big-headed DJs play to the beat.**
 
-Forma parte de la familia de apps Ludok. Android, hecha con Expo SDK 57.
+Side view, 90-second matches, a vinyl record for a ball and speakers for goals.<br>
+The music isn't background: hit the ball on the kick drum and your shot comes out stronger.
 
-## Estado
+[![License: MIT](https://img.shields.io/github/license/iamLudok/Ludok-kick?style=flat-square&color=blue)](LICENSE)
+[![Expo SDK 57](https://img.shields.io/badge/Expo-SDK%2057-000020?style=flat-square&logo=expo&logoColor=white)](https://docs.expo.dev/versions/v57.0.0/)
+[![React Native](https://img.shields.io/badge/React%20Native-0.86-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactnative.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Skia](https://img.shields.io/badge/Skia-2.6-E34F26?style=flat-square&logo=skia&logoColor=white)](https://shopify.github.io/react-native-skia/)
+[![Android](https://img.shields.io/badge/Android-APK-3DDC84?style=flat-square&logo=android&logoColor=white)](https://github.com/iamLudok/Ludok-kick/releases)
+[![SQLite](https://img.shields.io/badge/SQLite-local--first-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://docs.expo.dev/versions/v57.0.0/sdk/sqlite/)
 
-El juego se construye por fases, y cada una se prueba en el móvil antes de pasar a la
-siguiente.
+[Features](#features) · [How to Play](#how-to-play) · [Download](#download) · [Build](#building-from-source) · [License](#license)
 
-| Fase | Qué trae | Estado |
-|---|---|---|
-| 1 | Prototipo de física: campo, dos jugadores (el rival quieto), vinilo, porterías, goles, marcador y reloj | Hecha |
-| 2 | Motor de beat: música sintetizada, remate al ritmo (PERFECT / GOOD), calibración de latencia, ajustes y copia de seguridad | Hecha |
-| 3 | IA con tres niveles (Warm-up, Peak Time, Closing) e historial de partidos | Hecha |
-| 4 | Drops en los goles | Hecha |
-| 5 | Poderes de DJ y barra de energía | Hecha |
-| 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Hecha |
-| 7 | Pulido: partículas, focos al ritmo, sonidos de interfaz, icono y splash | Hecha |
-| 8 | 11 DJs con su música y su habilidad, pantalla VS | Hecha |
-| 9 | Escalera de rivales, logros por rival, monedas, tienda de mejoras, dash y banderas | Hecha |
+</div>
 
-## Cómo se juega
+---
 
-- **Mitad izquierda de la pantalla**: moverse. No hace falta acertar en las flechas; cuenta
-  cualquier toque, y se puede deslizar de un lado a otro sin levantar el dedo. **Doble toque**
-  rápido a un lado: dash.
-- **Mitad derecha**: chutar (bota, hacia dentro) y saltar (flecha, en el extremo). Va al botón
-  que quede más cerca del dedo.
-- **Botón central**: el poder, cuando lo tienes.
-- El cabezazo sale solo al chocar con la cabeza.
-- Con el botón de chutar, el momento importa: si el pie pilla el vinilo al principio del
-  barrido sale raso y rápido; si lo pilla al final, bombeado.
-- **Rematar al ritmo**: cada toque al vinilo (pie o cabeza) se mide contra el bombo más
-  cercano. A menos de 80 ms es PERFECT y el tiro sale un 35 % más fuerte; a menos de 160 ms
-  es GOOD, un 15 % más. El anillo que se cierra sobre tu jugador llega a la cabeza justo en el
-  beat, y el suelo y los bafles laten con él.
-- **Cada DJ pone su música**, a su tempo, de 122 a 145 BPM. El tempo no cambia durante el
-  partido ni la velocidad del juego: un techno suena más rápido que un house, pero los muñecos
-  corren igual. Las ventanas de PERFECT y GOOD son siempre la misma fracción del beat.
-- **Cada gol es un drop**: el partido se congela mientras la música se cierra y sube la
-  tensión; en el primer beat a partir de unos 0,75 s cae el drop (bombo, bajo e impacto), la
-  onda expansiva lanza por los aires al que encajó y tiembla la cámara. Luego se saca.
-- Empate al acabar el tiempo: gol de oro.
+<p align="center">
+<img src="docs/screenshots/match.webp" alt="A match in the Caserío rave stage: Marsmelou hits a PERFECT while Klaptone flies with his Wings ability" width="49%">
+<img src="docs/screenshots/goal.webp" alt="Klaptone scores: the game freezes and waits for the drop" width="49%">
+</p>
+<p align="center">
+<img src="docs/screenshots/select.webp" alt="Pick your DJ: Marsmelou with his genre, tempo and ability, and the grid of eleven DJs" width="49%">
+<img src="docs/screenshots/ladder.webp" alt="Pick your rival: Klaptone on rung 8 of the ladder, with the eight badges against him and the three stages" width="49%">
+</p>
+<p align="center">
+<img src="docs/screenshots/result.webp" alt="Result screen: Marsmelou beats Klaptone 4-2, earns coins, unlocks Klaptone and a new badge" width="49%">
+<img src="docs/screenshots/shop.webp" alt="Shop: upgrade speed, kick, jump, dash and power with coins" width="49%">
+</p>
 
-## Los DJs
+<p align="center"><sub>Match · Goal · Pick your DJ · Rival ladder · Result · Shop</sub></p>
 
-Once caricaturas con nombres guiño a DJs conocidos (no se nombra a nadie, así que el APK se
-puede compartir). Cada uno pone su género y tiene su habilidad propia; arriba, en el partido,
-lleva la bandera de su país junto a su barra de power. Solo están los que se reconocen de un
-vistazo por algún rasgo (la calva, el flequillo, el pelo verde, la máscara): en el partido las
-cabezas son pequeñas y un DJ sin rasgo propio se confunde con otro. Se empieza con Ludok; el
-resto se desbloquea ganándole en la escalera.
+## Table of Contents
 
-| Escalón | DJ | País | Música | Habilidad | IA |
+- [Features](#features)
+- [How to Play](#how-to-play)
+- [The DJs](#the-djs)
+- [DJ Abilities](#dj-abilities)
+- [Fair Rhythm](#fair-rhythm)
+- [Download](#download)
+- [Your Data](#your-data)
+- [Building from Source](#building-from-source)
+- [How It's Tested](#how-its-tested)
+- [Tuning the Game Feel](#tuning-the-game-feel)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Features
+
+- 🎧 **Play to the beat**: every touch of the vinyl (foot or head) is judged against the nearest kick drum. Within 80 ms it's a **PERFECT** (35 % stronger shot), within 160 ms a **GOOD** (15 % stronger). A ring closing on your player reaches the head right on the beat, and the floor and the speakers pulse with it.
+- 🎶 **Every DJ plays their own music**: eleven genres synthesized live, from minimal to industrial techno, each at a fixed tempo between 122 and 145 BPM. A faster track doesn't make the game faster: the PERFECT and GOOD windows are always the same fraction of a beat.
+- 💥 **Every goal is a drop**: the game freezes while the music filters down and builds up, the drop lands on the beat, the shockwave sends whoever conceded flying and the camera shakes.
+- ⚡ **One ability per DJ**: PERFECT hits fill your energy bar; when it's full, the button in the middle launches your DJ's ability. Fourteen in total.
+- 🪜 **Rival ladder**: start with Ludok and beat ten rivals in a row. Each win opens the next rung and unlocks that DJ. The AI gets smarter and stronger as you climb (Warm-up, Peak Time, Closing).
+- 🏅 **Eight badges per rival**: win without conceding, by 5 goals, with a golden goal, without your ability, without dashing, without kicking, without jumping, and beat them 10 times. During a match, the "without..." ones are crossed out as soon as they can't be earned anymore.
+- 🪙 **Coins and shop**: every match gives coins (more for winning, for higher rungs and for new badges). Spend them on five upgrades from 0 to 10: speed, kick, jump, dash and power (how fast the bar fills). They're yours and work with any DJ.
+- 🏁 **90-second matches**, golden goal if it's a draw.
+- 🎚️ **Latency calibration**: tap along to a metronome so that "on time" means the same for the game as for your ears, even with Bluetooth headphones.
+- 🎨 **Everything drawn and synthesized by code**: DJs, stages, effects and music. No sprites, no audio files.
+- 📱 **Local-first**: no accounts, no servers, no ads, no network access at all. History and progress live in SQLite on your phone, with JSON backups.
+
+The game's interface is in Spanish.
+
+> **What leaves your phone:** nothing. The app has no network code. A backup file only goes where
+> you send it from the share menu.
+
+---
+
+## How to Play
+
+| Control | What it does |
+|---|---|
+| **Left half of the screen** | Move. Any touch counts, and you can slide from one side to the other without lifting your finger. **Double tap** to one side: dash. |
+| **Right half** | Kick (boot, inner button) and jump (arrow, outer edge). The touch goes to the nearest button. |
+| **Middle button** | Your DJ's ability, when the bar is full. |
+| **Your head** | Headers happen on their own when the vinyl hits it. |
+
+With the kick button, timing matters twice: catch the vinyl early in the swing and it goes low and
+fast, late in the swing and it goes high. And the closer to the kick drum, the stronger.
+
+---
+
+## The DJs
+
+Eleven caricatures with names that wink at well-known DJs. Only DJs you can recognize at a glance
+made it in (the bald head, the fringe, the green hair, the mask): heads are small in a match, and a
+DJ without a distinctive feature looks like any other.
+
+> The DJs are **parodies**. Ludok Kick has no relation to, and is not endorsed by, any of the
+> artists they wink at. Their names and likenesses belong to them.
+
+| Rung | DJ | Country | Music | Ability | AI |
 |---|---|---|---|---|---|
-| — | **Ludok** (inicial) | Euskadi | Melodic techno · 124 | Scratch | — |
-| 1 | **Karl Box** | Reino Unido | Techno · 130 | Bombo | Warm-up |
-| 2 | **Marsmelou** | EE. UU. | Future bounce · 128 | Nube | Warm-up |
-| 3 | **Ritxi Hautin** | Canadá | Minimal · 125 | Loop | Warm-up |
-| 4 | **Mis Monik** | Ucrania | Progressive house · 124 | Rayo | Peak Time |
-| 5 | **Deadmouse** | Canadá | Progressive · 128 | Cabeza gigante | Peak Time |
-| 6 | **Daft Funk** | Francia | French house · 124 | Modo robot | Peak Time |
-| 7 | **Solomoon** | Bosnia | Melodic house · 122 | Luna | Peak Time |
-| 8 | **Klaptone** | Alemania | Deep house · 122 | Alas | Closing |
-| 9 | **Boris Bretxa** | Alemania | High-tech minimal · 126 | Bufón | Closing |
-| 10 | **I Hait Mudel** | Francia | Techno industrial · 145 | Apagón | Closing |
+| - | **Ludok** (starter) | Basque Country | Melodic techno · 124 | Scratch | - |
+| 1 | **Karl Box** | United Kingdom | Techno · 130 | Stomp | Warm-up |
+| 2 | **Marsmelou** | United States | Future bounce · 128 | Cloud | Warm-up |
+| 3 | **Ritxi Hautin** | Canada | Minimal · 125 | Loop | Warm-up |
+| 4 | **Mis Monik** | Ukraine | Progressive house · 124 | Laser | Peak Time |
+| 5 | **Deadmouse** | Canada | Progressive · 128 | Big head | Peak Time |
+| 6 | **Daft Funk** | France | French house · 124 | Robot mode | Peak Time |
+| 7 | **Solomoon** | Bosnia | Melodic house · 122 | Moon | Peak Time |
+| 8 | **Klaptone** | Germany | Deep house · 122 | Wings | Closing |
+| 9 | **Boris Bretxa** | Germany | High-tech minimal · 126 | Jester | Closing |
+| 10 | **I Hait Mudel** | France | Industrial techno · 145 | Blackout | Closing |
 
-## La escalera, los logros y la tienda
+Deadmouse's mouth changes colour from one match to the next, like his live shows.
 
-Como el arcade de Head Soccer:
+Your stats (speed, kick, jump, dash, power) come from the shop, not from the DJ: DJs only differ in
+their music and their ability. The AI's stats rise with its rung on the ladder.
 
-- **Escalera de rivales.** Se empieza con Ludok y solo contra el primero; ganarle abre el
-  siguiente y lo desbloquea para jugar con él. La IA sube de nivel con la escalera (Warm-up,
-  Peak Time, Closing) y sus estadísticas también (las del escalón 1 a 10).
-- **Logros por rival** (ocho insignias contra cada uno): gana sin encajar, por 5 goles, con gol
-  de oro, sin usar tu habilidad, sin dash, sin chutar, sin saltar, y gánale 10 veces. Se ven en
-  la escalera, y durante el partido los de «sin…» se tachan en cuanto dejan de ser posibles.
-- **Monedas y tienda.** Cada partido da monedas (más ganando, más arriba en la escalera y por
-  cada logro nuevo). En la tienda se mejoran tus cinco estadísticas, de 0 a 10: velocidad,
-  tiro, salto, dash y power (lo rápido que se llena la barra). Son tuyas y valen con
-  cualquier DJ: los DJs se diferencian solo por su habilidad.
+There are also three stages, all drawn by code: a **Warehouse** in Bilbao, a **Sunset** over the bay
+of Donostia, and a **Caserío rave** in Gipuzkoa. The stage is only how it looks; the music comes from
+your DJ.
 
-Todo sale del historial de partidos (más las monedas y los niveles, en los ajustes), así que la
-copia de seguridad se lleva el progreso entero. El truco de las 7 pulsaciones en el título
-abre toda la escalera y todos los DJs, para probar.
+> **Easter egg:** tap the title seven times on the main menu to unlock every DJ and the whole ladder
+> for testing. Seven more taps turn it off.
 
+---
 
+## DJ Abilities
 
-Nombres, colores, países y géneros están en `src/content/djs.ts`; las bases, en
-`src/content/genres.ts`; la escalera y los logros, en `src/content/ladder.ts`; las mejoras, en
-`src/game/upgrades.ts`. Para que el poder salga al
-azar en vez de ser el del DJ, `POWER.SIGNATURE` en `src/game/constants.ts`.
+Each PERFECT fills a quarter of the energy bar. When it's full, your DJ's ability shows up on the
+middle button.
 
-## Los escenarios
-
-| Escenario | Cómo se ve |
+| Ability | What it does |
 |---|---|
-| **Warehouse, Bilbao** | Nave industrial: ventanales, pilares de acero, luz de sodio |
-| **Atardecer, Donostia** | La bahía al atardecer: el sol sobre el mar, la isla, los montes |
-| **Caserío rave** | Muro de piedra, cercha de madera y guirnaldas de bombillas |
+| **Scratch** | Your next shot curves down towards the goal |
+| **Stomp** | A shockwave stomp: knocks the rival back and clears the vinyl towards their goal |
+| **Robot mode** | The rival freezes for 1.2 s |
+| **Big head** | Your head grows for 5 s |
+| **Cloud** | The vinyl turns light and bouncy for 5 s |
+| **Laser** | Your next shot flies straight and very fast, without dropping |
+| **Loop** | The vinyl hangs in the air for 1.5 s; if it was on the ground, it rises to volley height |
+| **Moon** | Low gravity for everyone for 5 s |
+| **Wings** | You glide when falling and get a double jump for 7 s |
+| **Jester** | The rival's left and right are swapped for 2 s (it confuses the AI too) |
+| **Blackout** | The rival loses any stored energy and can't charge or use abilities for 6 s |
+| **Hands up** | You jump much higher for 5 s |
+| **Wall** | A speaker blocks your goal for 4 s |
+| **Low-pass** | The rival moves in slow motion for 3 s, and the music is muffled except for the kick |
 
-El escenario es solo cómo se ve: la música la pone tu DJ. Todo está dibujado y sintetizado por
-código.
+The last three aren't assigned to any DJ right now. They're still in the game and tested: they show
+up with random abilities (`POWER.SIGNATURE = false` in [`src/game/constants.ts`](src/game/constants.ts)).
 
-## Poderes de DJ
+The AI charges energy with its own PERFECTs and uses its abilities too. Higher levels wait for the
+right moment (the Loop with the vinyl in front of them, the Stomp when it clears the ball); lower
+levels fire them whenever.
 
-Cada remate PERFECT llena un cuarto de la barra de energía (el anillo del botón central y la
-barra junto a tu marcador). Llena, tienes lista la habilidad de tu DJ, que aparece en el botón;
-se lanza al pulsarlo.
+---
 
-| Habilidad | Qué hace |
-|---|---|
-| **Scratch** | Tu siguiente tiro lleva un efecto que lo hunde hacia la portería |
-| **Bombo** | Pisotón con onda: lanza al rival y despeja el vinilo hacia la portería contraria |
-| **Manos arriba** | Saltas muchísimo más durante 5 s |
-| **Modo robot** | El rival se queda congelado 1,5 s |
-| **Cabeza gigante** | Tu cabeza crece durante 5 s |
-| **Nube** | El vinilo se vuelve ligero y botón durante 5 s |
-| **Muro** | Un bafle tapa tu portería durante 4 s |
-| **Rayo** | Tu siguiente tiro sale recto y rapidísimo, sin caer |
-| **Low-pass** | El rival a cámara lenta 3 s, y la música amortiguada menos el bombo |
-| **Loop** | El vinilo se queda flotando 1,5 s; si iba por el suelo, sube a altura de volea |
-| **Luna** | Gravedad baja para todos durante 5 s |
-| **Alas** | Planeas al caer y tienes un salto en el aire, durante 5 s |
-| **Bufón** | Al rival se le cambian izquierda y derecha 3 s (a la IA también la lía) |
-| **Apagón** | El rival pierde lo que tuviera cargado y se queda 6 s sin cargar ni lanzar nada |
+## Fair Rhythm
 
-Manos arriba, Muro y Low-pass no las lleva ahora ningún DJ (eran de los que se quitaron). Siguen
-en el juego y probadas: salen si se juega con habilidades al azar (`POWER.SIGNATURE = false`) o
-si se le dan a un DJ nuevo.
+A game that rewards hitting on time is only fair if "on time" means the same for the game as for
+your ears. Four decisions hold that up:
 
-La IA también carga energía con sus PERFECT y usa sus poderes: los niveles altos esperan al
-momento bueno (el Muro con un tiro yendo a su portería, el Loop con el vinilo delante, el Low-pass en
-plena disputa); los bajos los sueltan cuando sea.
+- **The audio clock is the only source of truth for the beat.** Music isn't triggered with
+  JavaScript timers: every note is scheduled ahead of time for an exact instant of the audio
+  clock, and the game reads the time from that same clock. If the app stutters, neither the music
+  nor the judgement notices.
+- **The music sets the tempo and the game follows it.** Each bar starts on a beat and carries its
+  tempo; the game counts beats from the bar that's playing. During a drop build-up the tempo stays
+  put, so the drop lands exactly on the announced beat.
+- **What you hear is judged, not what the phone sends to the speaker.** Between the two there are a
+  few tens of milliseconds with the phone speaker and up to 300 with Bluetooth headphones. That
+  delay is subtracted before judging and before drawing the ring.
+- **The delay can be calibrated** in *Ajustes*, tapping along to a metronome. Without calibration,
+  the game uses what the phone reports. With Bluetooth, calibrating is a must; even then, the
+  *sound* of the hit will arrive late, and that can't be fixed.
 
-## El rival
+The simulation runs at a **fixed 120 steps per second** and is deterministic: the same inputs
+always give the same match. It looks smooth on any screen because drawing interpolates whatever
+hasn't been simulated yet. Simulation and drawing both run on the **UI thread**, so the buttons
+don't wait for React and a JavaScript hiccup doesn't stop the match.
 
-Tres niveles: **Warm-up**, **Peak Time** y **Closing**. La IA juega con los mismos botones y
-la misma física que tú: no corre más ni chuta más fuerte. Lo que cambia entre niveles es
-cuánto tarda en reaccionar, cuánto falla al calcular dónde caerá el vinilo, cuánto se queda en
-blanco, cuánto se atreve a subir y, sobre todo, cuánto busca el beat: en Closing, dos de cada
-tres chutes suyos son PERFECT.
+---
 
-No decide en cada frame sino cada cierto tiempo, como una persona que mira y reacciona; entre
-decisión y decisión sigue con el plan que tenía. Su azar sale de una semilla y no de
-`Math.random`, así que un partido se puede repetir exacto, y eso es lo que permite probarla.
+## Download
 
-## Lo que manda: que el ritmo sea justo
+Grab the latest signed APK from the [Releases](https://github.com/iamLudok/Ludok-kick/releases) page
+and install it on your Android phone (you'll need to allow installing apps from unknown sources).
+The game is landscape only.
 
-Un juego que premia rematar a tiempo solo es justo si «a tiempo» significa lo mismo para el
-juego que para tu oído. Tres decisiones lo sostienen:
+Updates install **on top of** the previous version and keep your progress, as long as they come
+from the same Releases page (same signing key).
 
-- **El reloj de audio es la única fuente de verdad del beat.** La música no se dispara con
-  temporizadores de JavaScript: cada nota se programa con antelación para un instante exacto
-  del reloj de audio, y el juego pregunta la hora a ese mismo reloj. Si la app da un tirón, la
-  música no se entera y el juicio tampoco.
-- **El tempo lo decide la música y el juego lo obedece.** Cada compás empieza en un beat y
-  lleva su tempo; el juego cuenta los beats desde el compás que suena y de ahí saca sus
-  ventanas. Durante la subida de un drop el tempo no se mueve, para que el
-  drop caiga exactamente en el beat que se anunció.
-- **Se juzga lo que oyes, no lo que el móvil manda al altavoz.** Entre una cosa y otra pasan
-  unas decenas de milisegundos con el altavoz del móvil y hasta 300 con auriculares Bluetooth.
-  Ese desfase se resta antes de juzgar y antes de pintar el anillo.
-- **El desfase se puede calibrar** en Ajustes, tocando al ritmo de un metrónomo. Sin
-  calibrar se usa el que el propio móvil dice tener. Con Bluetooth, calibrar es
-  imprescindible; aun así, el *sonido* del golpe se oirá tarde, y eso no tiene arreglo.
+---
 
-## Tus datos
+## Your Data
 
-Sin cuentas ni servidores. Los ajustes y el historial de partidos se guardan en una base
-SQLite dentro del almacenamiento privado de la app. Desde Ajustes se exporta todo a un
-fichero JSON con el menú de compartir del sistema, y se importa de vuelta.
+No accounts and no servers. Settings, coins, upgrades and match history are stored in a SQLite
+database in the app's private storage. All progress (the ladder, badges, unlocked DJs) is derived
+from the match history, so a backup carries everything.
 
-La calibración de audio no viaja en la copia: es una medida de un móvil concreto con unos
-auriculares concretos, y restaurada en otro aparato haría injustos todos los remates sin que
-se notara por qué.
+**Ajustes → Copia de seguridad → Exportar** saves everything to a JSON file through the share menu.
+**Importar** restores it, **replacing** the current history.
 
-## Arranque
+The audio calibration is **not** included in backups: it's a measurement of one phone with one pair
+of headphones, and restoring it on another device would quietly make every hit unfair.
+
+---
+
+## Building from Source
+
+### Requirements
+
+- Node.js and npm
+- JDK 17
+- Android SDK with API 36, and `adb`
+- An Android phone connected over USB (or an emulator)
+
+Expo Go won't work: Skia, the audio engine and the other native modules need a **development build**.
+
+### Run in development
 
 ```bash
+git clone https://github.com/iamLudok/Ludok-kick.git
+cd Ludok-kick
 npm install
-npm run android     # compila la versión de desarrollo y la abre en el móvil conectado por adb
+npm run android      # builds, installs and opens the app on a phone connected via adb
+npm run typecheck    # types for the app and the verification scripts
+npm run verify       # tests the game core and the data layer in Node
 ```
 
-Hace falta **development build**: Skia, el audio y el resto de módulos nativos no van en Expo Go.
+### Build a release APK
 
-Requisitos: JDK 17, Android SDK con API 36 y `adb`.
-
-## Compilar el APK
+The build script signs the APK with your own keystore. Create one and describe it in a
+`keystore.properties` file at the project root (both are in `.gitignore`):
 
 ```bash
-./scripts/build-apk.sh --compartir   # solo arm64-v8a, para instalar en un móvil
+keytool -genkeypair -v -keystore release.jks -alias ludok-kick \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+```properties
+storeFile=release.jks
+storePassword=...
+keyAlias=ludok-kick
+keyPassword=...
+```
+
+Then:
+
+```bash
+npm run build:apk                    # all architectures
+./scripts/build-apk.sh --compartir   # arm64-v8a only, smaller, for sharing
+# → ludok-kick-v<version>.apk at the project root, named after app.json
+
 adb install -r ludok-kick-v1.0.0.apk
 ```
 
-Tiene que ser el de release: en el de desarrollo el JavaScript se carga del ordenador y, sobre
-todo, **va mucho más lento**. Los fps solo significan algo medidos en release.
+It has to be a **release** build: a debug APK loads its JavaScript from your computer and is much
+slower, so frame rates only mean something in release. Before installing an APK on top of another,
+bump `android.versionCode` in `app.json`.
 
-Antes de cada APK que se vaya a instalar encima de otro, sube `android.versionCode` en
-`app.json`.
+> ⚠️ **Keep your keystore safe.** Android only installs an APK on top of another if both are signed
+> with the same key. If you lose it, the only way to install a new version is to uninstall the
+> app, and **uninstalling deletes its data**.
 
-## ⚠️ El keystore
+### Icon and splash
 
-La firma vive en `release.jks` y `keystore.properties`, los dos fuera del repo. Guárdalos junto
-a tus copias de seguridad: Android solo deja instalar un APK encima de otro si van firmados con
-la misma clave. Si se pierden, la única salida es desinstalar para poner la versión nueva, y
-desinstalar borra los ajustes y el historial de partidos.
+The source drawings are SVGs in [`assets/src/`](assets/src): a vinyl with headphones on Ludok purple.
+Regenerate the PNGs with `./scripts/icons.sh` (needs ImageMagick with librsvg), then delete
+`android/` so that `expo prebuild` picks them up.
 
-## Verificación
+---
 
-```bash
-npm run typecheck
-npm run verify
-```
+## How It's Tested
 
-Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre en el móvil**:
+The scripts in [`verify/`](verify) run **the same code that runs on the phone**, in Node:
 
-| Script | Qué comprueba |
+| Script | What it checks |
 |---|---|
-| `verify/physics.ts` | Que el vinilo no se sale del campo ni se queda atrapado, que los goles se cuentan en el lado correcto, que el reloj acaba el partido o da paso al gol de oro, que ningún lado tiene ventaja y que el resultado es el mismo a 60 que a 120 Hz |
-| `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca, que el tiro sale con su potencia, que el tempo sube y encoge las ventanas, y que el drop cae cuando dice la música |
-| `verify/powers.ts` | La barra de energía (solo la llenan los PERFECT) y las 14 habilidades, una por una: que se lanzan una vez por pulsación y que cada una hace lo que dice (el Muro para un tiro que era gol, la Cabeza gigante remata lo que la normal no alcanza, el Rayo no cae…) |
-| `verify/characters.ts` | Que cada DJ tiene su ventaja y su poder, que ninguno gana o pierde casi siempre (la IA contra sí misma con cada pareja de DJs), que todas las bases dejan el bombo en las negras y que lo que llega por la ruta se lee bien aunque venga roto |
-| `verify/ladder.ts` | La escalera (cada victoria abre el siguiente escalón y desbloquea a ese DJ), los ocho logros por rival y las monedas, contra historiales inventados |
-| `verify/sequencer.ts` | La música, con un motor de audio de mentira que apunta qué se programa: bombos en los beats, tempo que cambia solo entre compases, drop en un beat y sin bombo ni bajo durante la subida |
-| `verify/ai.ts` | Enfrenta los niveles entre sí y contra un rival quieto: que están ordenados, que los altos rematan más al ritmo, que nunca se atascan y que no se meten goles en propia |
-| `verify/data.ts` | Ida y vuelta de la copia de seguridad contra un SQLite de escritorio: que nada se pierde ni se mezcla y que se rechaza lo que hay que rechazar |
-| `verify/library.ts` | Las reglas de ajustes, calibración e historial |
-| `verify/migration.ts` | Que el SQL del esquema y las tablas de Drizzle describen lo mismo |
+| `verify/physics.ts` | The vinyl never leaves the pitch or gets stuck, goals count for the right side, the clock ends the match or goes to golden goal, neither side has an advantage, and the result is the same at 60 and 120 Hz |
+| `verify/beat.ts` | Beat maths: distance to the beat, which judgement a touch gets, shot power, windows that scale with tempo, the judgement at the window edge doesn't depend on fps, and the drop lands when the music says |
+| `verify/powers.ts` | The energy bar (only PERFECTs fill it) and all 14 abilities one by one: each fires once per press and does what it says (the Wall stops a shot that was a goal, the Big head reaches what a normal head can't, the Laser doesn't drop...) |
+| `verify/characters.ts` | Every DJ has its own ability and country and a distinct look, upgrades raise stats within limits, no DJ wins or loses almost always (the AI against itself with every pair), every genre keeps the kick on the quarter notes at a playable tempo, and route parameters survive garbage |
+| `verify/ladder.ts` | The ladder (each win opens the next rung and unlocks that DJ), the eight badges per rival and the coins, against made-up histories |
+| `verify/sequencer.ts` | The music, with a fake audio engine that records what gets scheduled: kicks on the beats, tempo changes only between bars, drop on a beat with no kick or bass during the build-up |
+| `verify/ai.ts` | The AI levels against each other and against a still rival: they're ordered, higher levels hit more on the beat, they never get stuck and they don't score own goals |
+| `verify/data.ts` | Backup round trip against a desktop SQLite: nothing is lost or mixed up, and bad files are rejected |
+| `verify/library.ts` | Rules for settings, calibration, history, coins and the shop |
+| `verify/migration.ts` | The SQL schema and the Drizzle tables describe the same thing, and upgrading an old database keeps its data |
 
-No comprueban si es divertido ni cómo suena: eso solo se sabe jugando.
+They don't check whether it's fun or how it sounds: that only shows when playing.
 
-## Ajustar la sensación de juego
+---
 
-Todos los números de jugabilidad están en **`src/game/constants.ts`** y en ningún otro sitio:
-velocidades, gravedad, rebotes, fuerza del chut, tamaño de las porterías, duración del
-partido, tempo, ventanas de PERFECT y GOOD y cuánto premian, y la personalidad de cada nivel
-de la IA (`AI`). Cada uno lleva al lado para qué sirve.
+## Tuning the Game Feel
 
-Para ver los fps y los milisegundos de trabajo por frame durante el partido: **Ajustes →
-Mostrar rendimiento**.
+Every gameplay number lives in [`src/game/constants.ts`](src/game/constants.ts) and nowhere else:
+speeds, gravity, bounces, kick strength, goal size, match length, PERFECT and GOOD windows and
+their rewards, ability durations, and the personality of each AI level. Each one has a comment
+explaining what it's for.
 
-## Estructura
+DJs (names, colours, countries, genres) are in [`src/content/djs.ts`](src/content/djs.ts), the music
+in [`src/content/genres.ts`](src/content/genres.ts), the ladder and badges in
+[`src/content/ladder.ts`](src/content/ladder.ts) and the upgrades in
+[`src/game/upgrades.ts`](src/game/upgrades.ts).
+
+To see fps and milliseconds of work per frame during a match: **Ajustes → Mostrar rendimiento**.
+
+---
+
+## Project Structure
 
 ```
-app/                 Rutas (expo-router): menú, elegir, partido, resultado, tienda y ajustes.
-src/game/            El juego en sí. Sin React, sin Skia, sin nada nativo.
-  constants.ts       Toda la configuración de jugabilidad.
-  types.ts           El estado del partido y el InputFrame.
-  state.ts           Estado inicial y saque.
-  step.ts            La simulación: física, goles, reloj y remate al ritmo.
-  beat.ts            La aritmética del beat (distancia, fase, juicio).
-  ai.ts              El rival: una fuente de inputs más, como los botones.
-  rng.ts             Azar con semilla: el mismo partido con los mismos inputs.
-src/audio/           La música y el reloj. Lo único que importa la librería de audio.
-  engine.ts          El AudioContext y los buses.
-  synth.ts           Los instrumentos y los efectos, sintetizados.
-  patterns.ts        Las bases, como rejillas de 16 pasos.
-  sequencer.ts       Programa las notas con antelación, compás a compás, y prepara los drops.
-  clock.ts           El reloj de audio leído desde el hilo del juego.
-  useAudioSession.ts Enciende y apaga todo con la pantalla y con la app.
-src/content/         Los DJs y los escenarios: nombres, ventajas, colores, decorado y música.
-  djs.ts             Los once DJs.
-  genres.ts          La música de cada DJ, con su tempo.
-  ladder.ts          La escalera de rivales y los logros.
-  stages.ts          Los tres escenarios.
-  setup.ts           Lo que define un partido, de ida y vuelta por la ruta.
-src/render/          Cómo se ve. Todo pintado por código con Skia.
-  characters.ts      Los DJs: cabeza, peinados, gafas, retratos.
-  decor.ts           Los decorados de fondo de cada escenario.
-  draw.ts            Una función por cosa que se pinta (jugador, vinilo, botones…).
-  stage.ts           La paleta del escenario.
-  view.ts            Cómo encaja el campo en la pantalla y dónde van los botones.
-src/lib/             Los datos: esquema, ajustes, historial y copias.
-  db.ts              El único fichero que importa expo-sqlite.
-  dbRef.ts           Por aquí pide la base todo lo demás (y por eso se puede probar en Node).
-src/ui/              Pantallas, marcador, controles táctiles y tokens de la interfaz.
-verify/              Pruebas del núcleo y de los datos, ejecutadas en Node.
-scripts/build-apk.sh Compila y firma el APK.
+Ludok-kick/
+├── app/                  ← Routes (expo-router): menu, pick DJ, rival, match, result, shop, settings
+├── src/
+│   ├── game/             ← The game itself. No React, no Skia, nothing native
+│   │   ├── constants.ts  ← All gameplay config
+│   │   ├── step.ts       ← Simulation: physics, goals, clock, abilities, beat judgement
+│   │   ├── beat.ts       ← Beat maths (distance, phase, judgement)
+│   │   ├── ai.ts         ← The rival: just another source of inputs, like the buttons
+│   │   ├── upgrades.ts   ← Shop upgrades and the stats they give
+│   │   └── state.ts, types.ts, rng.ts
+│   ├── audio/            ← Music and clock. The only code that imports the audio library
+│   │   ├── sequencer.ts  ← Schedules notes ahead, bar by bar, and prepares the drops
+│   │   ├── synth.ts      ← Instruments and sound effects, synthesized
+│   │   └── engine.ts, clock.ts, patterns.ts, ui.ts, useAudioSession.ts
+│   ├── content/          ← DJs, genres, stages, ladder and badges, match setup
+│   ├── render/           ← How it looks, all drawn with Skia
+│   │   ├── characters.ts ← DJ heads, hair, masks, glasses, portraits
+│   │   ├── draw.ts       ← One function per thing on screen (player, vinyl, buttons, effects)
+│   │   └── decor.ts, particles.ts, stage.ts, view.ts
+│   ├── lib/              ← Data: schema, settings, history, coins, backups
+│   │   ├── db.ts         ← The only file that imports expo-sqlite
+│   │   └── dbRef.ts      ← Everything else gets the database here (so it can be tested in Node)
+│   ├── hooks/            ← Reactive history, ladder and settings
+│   └── ui/               ← Screens, HUD, touch controls, flags, badges and design tokens
+├── verify/               ← Tests (Node, not shipped in the APK)
+├── scripts/
+│   ├── build-apk.sh      ← Builds and signs the release APK
+│   └── icons.sh          ← Regenerates the icon and splash PNGs
+├── docs/screenshots/     ← Images for this README
+└── assets/               ← Icon and splash (PNG, with SVG sources)
 ```
 
-Tres decisiones sostienen el resto:
+The `android/` folder is generated by `expo prebuild` and is not committed.
 
-- **El juego no sabe de dónde vienen los inputs.** `stepGame` recibe un `InputFrame` por
-  jugador y le da igual que lo produzcan los botones táctiles, la IA (`stepAi`) o (más
-  adelante) otro móvil. Es lo que permitirá añadir dos jugadores sin tocar la física.
-- **La simulación va a paso fijo** (120 pasos por segundo) y es determinista: los mismos
-  inputs dan siempre el mismo partido. Se ve fluida en cualquier pantalla porque el dibujo se
-  adelanta lo que quede sin simular.
-- **Simulación y dibujo corren en el hilo de UI**, no en el de JavaScript: los botones no
-  esperan a React y un tirón de JavaScript no para el partido.
+The game doesn't know where its inputs come from: `stepGame` takes one `InputFrame` per player, and
+doesn't care whether it comes from the touch buttons or the AI (`stepAi`). That's what would let a
+second human player in without touching the physics.
 
-## Icono y splash
+---
 
-Los dibujos fuente están en `assets/src/` como SVG: un vinilo con auriculares sobre el morado
-Ludok. Los PNG se generan con:
+## Contributing
 
-```bash
-./scripts/icons.sh     # necesita ImageMagick con librsvg
-```
+Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and
+conventions. To report a security vulnerability, follow [SECURITY.md](SECURITY.md) instead of
+opening a public issue.
 
-Hay icono adaptable de Android (capa delantera sobre fondo morado) y versión monocroma para los
-iconos temáticos de Android 13 en adelante. Tras cambiar el icono o el splash hay que borrar
-`android/` antes de compilar, para que `expo prebuild` lo regenere con los dibujos nuevos.
+---
 
-## Dirección de arte
+## License
 
-Cartoon legible en pantalla pequeña: cabezas enormes, cuerpo mínimo, contorno oscuro grueso y
-colores planos. Cada DJ se distingue por silueta y por un color propio. Los escenarios son
-oscuros y de pocas capas, para que el vinilo (negro, con borde claro y etiqueta de color) sea
-siempre lo más fácil de seguir. El morado Ludok (`#7A45C4`) es el color de la interfaz.
+The code is distributed under the **MIT License**. You are free to use, modify and share Ludok Kick,
+including for commercial use, as long as you keep the copyright notice. See [LICENSE](LICENSE) for
+the full text.
 
-Ahora mismo todo son formas pintadas por código. Cada cosa tiene su función de dibujo en
-`src/render/draw.ts`; cambiar a sprites es cambiar el cuerpo de esas funciones.
+The license covers the code. The DJ characters are parodies of real artists, whose names and
+likenesses aren't licensed here.
+
+---
+
+<div align="center">
+
+Made by [Luken Iriondo](https://github.com/iamLudok) · If Ludok Kick is useful to you, consider giving it a ⭐
+
+</div>

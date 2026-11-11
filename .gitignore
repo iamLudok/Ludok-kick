@@ -26,7 +26,7 @@ expo-env.d.ts
 *.mobileprovision
 keystore.properties
 
-# Copias de seguridad: llevan dentro tus claves de API. Nunca subir al repo.
+# Copias de seguridad: llevan tu historial de partidos y tu progreso. No van al repo.
 ludok-kick-backup-*.json
 
 # logs
