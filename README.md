@@ -16,7 +16,7 @@ siguiente.
 | 1 | Prototipo de física: campo, dos jugadores (el rival quieto), vinilo, porterías, goles, marcador y reloj | Hecha |
 | 2 | Motor de beat: música sintetizada, remate al ritmo (PERFECT / GOOD), calibración de latencia, ajustes y copia de seguridad | Hecha |
 | 3 | IA con tres niveles (Warm-up, Peak Time, Closing) e historial de partidos | Hecha |
-| 4 | Drops en los goles y BPM que sube con el partido | Pendiente |
+| 4 | Drops en los goles y BPM que sube con el partido | Hecha |
 | 5 | Poderes de DJ y barra de energía | Pendiente |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Pendiente |
 | 7 | Pulido: partículas, sacudida de cámara, icono y splash | Pendiente |
@@ -33,6 +33,12 @@ siguiente.
   cercano. A menos de 80 ms es PERFECT y el tiro sale un 35 % más fuerte; a menos de 160 ms
   es GOOD, un 15 % más. El anillo que se cierra sobre tu jugador llega a la cabeza justo en el
   beat, y el suelo y los bafles laten con él.
+- **El tempo sube**: de 120 BPM al empezar a 145 al acabar. Con él sube la velocidad del juego
+  (al final todo va un 21 % más rápido) y se encogen las ventanas de PERFECT y GOOD, que son
+  siempre la misma fracción del beat. El reloj del partido sigue marcando segundos de verdad.
+- **Cada gol es un drop**: el partido se congela mientras la música se cierra y sube la
+  tensión; en el primer beat a partir de unos 0,75 s cae el drop (bombo, bajo e impacto), la
+  onda expansiva lanza por los aires al que encajó y tiembla la cámara. Luego se saca.
 - Empate al acabar el tiempo: gol de oro.
 
 ## El rival
@@ -56,6 +62,10 @@ juego que para tu oído. Tres decisiones lo sostienen:
   temporizadores de JavaScript: cada nota se programa con antelación para un instante exacto
   del reloj de audio, y el juego pregunta la hora a ese mismo reloj. Si la app da un tirón, la
   música no se entera y el juicio tampoco.
+- **El tempo lo decide la música y el juego lo obedece.** Cada compás empieza en un beat y
+  lleva su tempo; el juego cuenta los beats desde el compás que suena y de ahí saca su
+  velocidad y sus ventanas. Durante la subida de un drop el tempo no se mueve, para que el
+  drop caiga exactamente en el beat que se anunció.
 - **Se juzga lo que oyes, no lo que el móvil manda al altavoz.** Entre una cosa y otra pasan
   unas decenas de milisegundos con el altavoz del móvil y hasta 300 con auriculares Bluetooth.
   Ese desfase se resta antes de juzgar y antes de pintar el anillo.
@@ -116,7 +126,8 @@ Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre e
 | Script | Qué comprueba |
 |---|---|
 | `verify/physics.ts` | Que el vinilo no se sale del campo ni se queda atrapado, que los goles se cuentan en el lado correcto, que el reloj acaba el partido o da paso al gol de oro, que ningún lado tiene ventaja y que el resultado es el mismo a 60 que a 120 Hz |
-| `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca y que el tiro sale con la potencia de ese juicio |
+| `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca, que el tiro sale con su potencia, que el tempo sube y encoge las ventanas, y que el drop cae cuando dice la música |
+| `verify/sequencer.ts` | La música, con un motor de audio de mentira que apunta qué se programa: bombos en los beats, tempo que cambia solo entre compases, drop en un beat y sin bombo ni bajo durante la subida |
 | `verify/ai.ts` | Enfrenta los niveles entre sí y contra un rival quieto: que están ordenados, que los altos rematan más al ritmo, que nunca se atascan y que no se meten goles en propia |
 | `verify/data.ts` | Ida y vuelta de la copia de seguridad contra un SQLite de escritorio: que nada se pierde ni se mezcla y que se rechaza lo que hay que rechazar |
 | `verify/library.ts` | Las reglas de ajustes, calibración e historial |
@@ -148,7 +159,7 @@ src/audio/           La música y el reloj. Lo único que importa la librería d
   engine.ts          El AudioContext y los buses.
   synth.ts           Los instrumentos y los efectos, sintetizados.
   patterns.ts        Las bases, como rejillas de 16 pasos.
-  sequencer.ts       Programa las notas con antelación en el reloj de audio.
+  sequencer.ts       Programa las notas con antelación, compás a compás, y prepara los drops.
   clock.ts           El reloj de audio leído desde el hilo del juego.
   useAudioSession.ts Enciende y apaga todo con la pantalla y con la app.
 src/render/          Cómo se ve. Todo pintado por código con Skia.

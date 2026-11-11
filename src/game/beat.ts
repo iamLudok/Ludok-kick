@@ -4,7 +4,36 @@
  * móvil, un número inventado en las pruebas) no es asunto suyo.
  */
 import { BEAT } from './constants'
-import type { Judge } from './types'
+import type { Bar, Judge } from './types'
+
+/** El tempo que toca según lo avanzado del partido (0 al empezar, 1 al acabar). */
+export function tempoAt(progress: number): number {
+  'worklet'
+  const p = progress < 0 ? 0 : progress > 1 ? 1 : progress
+  return Math.round(BEAT.BPM_START + (BEAT.BPM_END - BEAT.BPM_START) * p)
+}
+
+/** Cuánto más rápido va el juego a este tempo. */
+export function speedAt(bpm: number): number {
+  'worklet'
+  return bpm / BEAT.BPM_START
+}
+
+/**
+ * El compás que suena en `time`: el último que empezó antes. Los compases
+ * vienen en orden y cada uno puede tener su tempo; como siempre empiezan en
+ * un beat, contar beats desde el compás actual da los beats exactos aunque el
+ * siguiente vaya más rápido. Devuelve null antes del primero.
+ */
+export function barAt(bars: Bar[], time: number): Bar | null {
+  'worklet'
+  let found: Bar | null = null
+  for (let i = 0; i < bars.length; i++) {
+    if (bars[i].t0 <= time) found = bars[i]
+    else break
+  }
+  return found
+}
 
 /** Segundos hasta el beat más cercano: negativo si aún no ha llegado, positivo si ya pasó. */
 export function beatDelta(time: number, t0: number, bpm: number): number {
@@ -21,9 +50,10 @@ export function beatPhase(time: number, t0: number, bpm: number): number {
   return beats - Math.floor(beats)
 }
 
-export function judgeDelta(deltaSeconds: number): Judge {
+/** Juicio de un toque a `deltaSeconds` del beat, con las ventanas encogidas a este tempo. */
+export function judgeDelta(deltaSeconds: number, bpm: number): Judge {
   'worklet'
-  const ms = Math.abs(deltaSeconds) * 1000
+  const ms = Math.abs(deltaSeconds) * 1000 * speedAt(bpm)
   if (ms <= BEAT.PERFECT_MS) return 2
   if (ms <= BEAT.GOOD_MS) return 1
   return 0

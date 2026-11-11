@@ -163,3 +163,54 @@ export function goalSfx(e: Engine): void {
   src.connect(amp)
   amp.connect(e.sfx)
 }
+
+/* --- El drop ------------------------------------------------------------- */
+
+/**
+ * La subida antes del drop: ruido que se abre hacia agudos y crece, de `t` a
+ * `end`. Va por el bus de efectos, no por el de música: así no se lo come el
+ * filtro que cierra la música a la vez.
+ */
+export function riser(e: Engine, t: number, end: number): void {
+  const dur = end - t
+  if (dur <= 0.05) return
+  const src = noiseBurst(e, t, dur)
+  const bp = e.ctx.createBiquadFilter()
+  const amp = e.ctx.createGain()
+  bp.type = 'bandpass'
+  bp.Q.value = 2.5
+  bp.frequency.setValueAtTime(400, t)
+  bp.frequency.exponentialRampToValueAtTime(6000, end)
+  amp.gain.setValueAtTime(SILENCE, t)
+  amp.gain.exponentialRampToValueAtTime(0.32, end - 0.01)
+  amp.gain.setValueAtTime(SILENCE, end)
+  src.connect(bp)
+  bp.connect(amp)
+  amp.connect(e.sfx)
+}
+
+/** El golpe del drop: un sub que cae en picado y un platillo largo. */
+export function impact(e: Engine, t: number): void {
+  const osc = e.ctx.createOscillator()
+  const amp = e.ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(110, t)
+  osc.frequency.exponentialRampToValueAtTime(32, t + 0.6)
+  amp.gain.setValueAtTime(0.95, t)
+  amp.gain.exponentialRampToValueAtTime(SILENCE, t + 1.1)
+  osc.connect(amp)
+  amp.connect(e.sfx)
+  osc.start(t)
+  osc.stop(t + 1.15)
+
+  const src = noiseBurst(e, t, 1.4)
+  const hp = e.ctx.createBiquadFilter()
+  const camp = e.ctx.createGain()
+  hp.type = 'highpass'
+  hp.frequency.value = 4000
+  camp.gain.setValueAtTime(0.28, t)
+  camp.gain.exponentialRampToValueAtTime(SILENCE, t + 1.4)
+  src.connect(hp)
+  hp.connect(camp)
+  camp.connect(e.sfx)
+}

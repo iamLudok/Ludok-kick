@@ -180,8 +180,12 @@ function think(ai: AiState, s: GameState, side: Side): void {
  * Lo que pulsa el rival en este frame. Hay que llamarla una vez por frame,
  * antes de `stepGame`, y pasarle el resultado como input de ese lado.
  */
-export function stepAi(ai: AiState, s: GameState, side: Side, dt: number): InputFrame {
+export function stepAi(ai: AiState, s: GameState, side: Side, frameDt: number): InputFrame {
   'worklet'
+  // Sus tiempos (reflejos, paciencia…) van en tiempo de juego: cuando el tempo
+  // sube y todo se acelera, ella también. Con segundos de verdad se quedaba
+  // cada vez más lenta respecto al partido.
+  const dt = frameDt * s.speed
   const L = AI[ai.level]
   const out = ai.out
   out.move = 0
@@ -267,8 +271,9 @@ export function stepAi(ai: AiState, s: GameState, side: Side, dt: number): Input
     }
     if (ai.patience >= 0) {
       const bt = s.beat
-      // El pie empieza a moverse en el primer paso del frame siguiente.
-      const contactAt = bt.now + SIM.DT + c
+      // El pie empieza a moverse en el primer paso del frame siguiente. `c` es
+      // tiempo de juego; el beat va en segundos de verdad.
+      const contactAt = bt.now + (SIM.DT + c) / s.speed
       ai.patience -= dt
       if (Math.abs(beatDelta(contactAt, bt.t0, bt.bpm)) <= AI.BEAT_AIM || ai.patience < 0) {
         ai.patience = -1

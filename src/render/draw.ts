@@ -40,7 +40,14 @@ export type BeatView = {
   /** 0 justo en el beat, casi 1 justo antes del siguiente; -1 si no hay música. */
   phase: number
   fx: Fx[]
+  /** La onda del último drop: dónde nació y cuánto hace (segundos); edad -1 si no hay. */
+  shock: { x: number; y: number; age: number }
 }
+
+/** Lo que dura la onda del drop y la sacudida de cámara. */
+export const SHOCK_LIFE = 0.7
+/** Cuánto se mueve la cámara al caer el drop, en dp. */
+const SHAKE_DP = 9
 
 export type Painter = {
   view: View
@@ -78,6 +85,10 @@ export type Painter = {
   beatRing: SkPaint
   beatFlash: SkPaint
   burst: SkPaint
+  shockRing: SkPaint
+  shockFlash: SkPaint
+  freezeScrim: SkPaint
+  sideFill: SkPaint
   font: SkFont
   textOutline: SkPaint
   textFill: [SkPaint, SkPaint]
@@ -250,6 +261,10 @@ export function createPainter(sw: number, sh: number, insetX: number, st: StageP
     beatRing: stroke(st.beatGlow, 3),
     beatFlash: stroke('#ffffff', 4),
     burst: stroke(st.perfect, 4),
+    shockRing: stroke(st.beatGlow, 14),
+    shockFlash: fill('#ffffff'),
+    freezeScrim: fill('#05030a'),
+    sideFill: fill(st.side),
     font,
     textOutline,
     textFill: [fill(st.good), fill(st.perfect)],
@@ -433,6 +448,18 @@ export function drawFrame(
 ): void {
   'worklet'
   const v = k.view
+  const shock = beat.shock
+
+  // La sacudida de cámara mueve todo menos los botones. Es una oscilación que
+  // se apaga: fuerte en el instante del drop y quieta a los 0,7 s.
+  canvas.save()
+  if (shock.age >= 0 && shock.age < SHOCK_LIFE) {
+    const fade = 1 - shock.age / SHOCK_LIFE
+    const amp = SHAKE_DP * fade * fade
+    // Lo que deja al descubierto el movimiento, del color de los lados.
+    canvas.drawRect({ x: 0, y: 0, width: v.sw, height: v.sh }, k.sideFill)
+    canvas.translate(Math.sin(shock.age * 71) * amp, Math.cos(shock.age * 53) * amp)
+  }
   canvas.drawPicture(k.background)
 
   // Un destello que nace en cada beat y se apaga enseguida.
@@ -446,7 +473,7 @@ export function drawFrame(
   // La simulación va a pasos fijos y casi nunca coincide con el instante del
   // frame. Se pinta «un poco por delante», lo que quede sin simular: sin esto
   // el movimiento da tironcitos aunque vaya a 60 fps clavados.
-  const ahead = s.phase === 'play' || s.phase === 'goal' ? s.acc : 0
+  const ahead = s.phase === 'play' || s.phase === 'drop' ? s.acc : 0
   const b = s.ball
   const bx = b.x + b.vx * ahead
   const by = Math.min(b.y + b.vy * ahead, FIELD.GROUND_Y - BALL.R)
@@ -472,6 +499,27 @@ export function drawFrame(
   drawVinyl(canvas, k, bx, by, b.angle + b.spin * ahead)
   for (let i = 0; i < beat.fx.length; i++) drawFx(canvas, k, beat.fx[i])
 
+  if (shock.age >= 0 && shock.age < SHOCK_LIFE) {
+    // La onda: un anillo que crece desde quien marcó y se va apagando.
+    const t = shock.age / SHOCK_LIFE
+    const ease = 1 - (1 - t) * (1 - t)
+    k.shockRing.setAlphaf(1 - t)
+    k.shockRing.setStrokeWidth(4 + 18 * (1 - t))
+    canvas.drawCircle(shock.x, shock.y, PLAYER.HEAD_R + 520 * ease, k.shockRing)
+  }
+
+  canvas.restore()
+
+  // Congelado esperando el drop: el campo se apaga para que se note la pausa.
+  if (s.phase === 'goal') {
+    k.freezeScrim.setAlphaf(0.45)
+    canvas.drawRect({ x: 0, y: 0, width: v.sw, height: v.sh }, k.freezeScrim)
+  }
+  // Y en el drop, un fogonazo que dura un suspiro.
+  if (shock.age >= 0 && shock.age < 0.15) {
+    k.shockFlash.setAlphaf(0.35 * (1 - shock.age / 0.15))
+    canvas.drawRect({ x: 0, y: 0, width: v.sw, height: v.sh }, k.shockFlash)
+  }
   canvas.restore()
 
   if (showControls) {

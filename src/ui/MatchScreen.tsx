@@ -10,7 +10,7 @@ import { createAudioClock, readAudioClock, type AudioClock } from '../audio/cloc
 import { PROTOTYPE_PATTERN } from '../audio/patterns'
 import { useAudioSession } from '../audio/useAudioSession'
 import { createAi, stepAi, type AiState } from '../game/ai'
-import { beatPhase } from '../game/beat'
+import { barAt, beatPhase, tempoAt } from '../game/beat'
 import { BEAT, DEBUG, MATCH } from '../game/constants'
 import { createInitialState, emptyInput } from '../game/state'
 import { stepGame, type BeatInput } from '../game/step'
@@ -19,7 +19,7 @@ import { addMatch } from '../lib/matches'
 import { useSettings } from '../hooks/useSettings'
 import { effectiveOffsetMs, updateSettings } from '../lib/settings'
 import { isLevel, type Level } from '../types'
-import { FX_LIFE, createPainter, drawFrame, type BeatView } from '../render/draw'
+import { FX_LIFE, SHOCK_LIFE, createPainter, drawFrame, type BeatView } from '../render/draw'
 import { PROTOTYPE_STAGE } from '../render/stage'
 import { Button } from './Button'
 import { LEVEL_NAME } from './labels'
@@ -34,9 +34,14 @@ type HudData = {
   seconds: number
   phase: Phase
   golden: boolean
+  /** Tempo del compás que suena; 0 sin música. */
+  bpm: number
 }
 
-const INITIAL_HUD: HudData = { score0: 0, score1: 0, seconds: MATCH.DURATION, phase: 'kickoff', golden: false }
+const INITIAL_HUD: HudData = { score0: 0, score1: 0, seconds: MATCH.DURATION, phase: 'kickoff', golden: false, bpm: 0 }
+
+/** El drop que ha preparado la música para el gol número `goal` del partido. */
+type DropInfo = { goal: number; at: number }
 
 /**
  * Lo que vive en el hilo de UI mientras dura un partido. Se crea allí mismo,
@@ -111,8 +116,24 @@ function Match({ width, height, insetX, level }: { width: number; height: number
   const [perf, setPerf] = useState('')
 
   const { data: settings } = useSettings()
-  const audio = useAudioSession(PROTOTYPE_PATTERN, BEAT.BPM, { music: settings.musicVolume, sfx: settings.sfxVolume })
-  const { source, grid, playHit, playGoal } = audio
+  // Lo avanzado del partido (0–1). Lo escribe el bucle del juego y lo lee la
+  // música al empezar cada compás para decidir su tempo.
+  const progress = useSharedValue(0)
+  const tempo = useCallback(() => tempoAt(progress.value), [progress])
+  const audio = useAudioSession(PROTOTYPE_PATTERN, tempo, { music: settings.musicVolume, sfx: settings.sfxVolume })
+  const { source, bars, playHit, playGoal, drop: prepareDrop, restart: restartMusic } = audio
+  const dropInfo = useSharedValue<DropInfo>({ goal: -1, at: -1 })
+
+  // Al marcar, la música decide cuándo cae el drop (en un beat) y se lo dice
+  // al juego, que se queda congelado hasta entonces.
+  const onGoal = useCallback(
+    (goal: number, at: number) => {
+      playGoal()
+      if (at < 0) return
+      dropInfo.value = { goal, at: prepareDrop(at + MATCH.MIN_FREEZE) }
+    },
+    [dropInfo, playGoal, prepareDrop],
+  )
 
   // El desfase calibrado viaja al hilo de UI en un valor compartido: cambia
   // como mucho una vez por partido, pero se lee en cada frame.
@@ -157,10 +178,10 @@ function Match({ width, height, insetX, level }: { width: number; height: number
           perfects: 0,
           goods: 0,
           saved: false,
-          hud: { score0: -1, score1: -1, seconds: -1, phase: 'kickoff', golden: false },
+          hud: { score0: -1, score1: -1, seconds: -1, phase: 'kickoff', golden: false, bpm: -1 },
           clock: createAudioClock(),
-          beatIn: { time: 0, t0: 0, bpm: BEAT.BPM },
-          beatView: { phase: -1, fx: [] },
+          beatIn: { time: 0, t0: 0, bpm: BEAT.BPM_START, dropAt: -1 },
+          beatView: { phase: -1, fx: [], shock: { x: 0, y: 0, age: -1 } },
           perfTime: 0,
           perfFrames: 0,
           perfWork: 0,
@@ -175,23 +196,32 @@ function Match({ width, height, insetX, level }: { width: number; height: number
       // que el jugador está oyendo: la hora del audio menos lo que tarda el
       // sonido en llegarle, que es el desfase calibrado.
       const src = source.value
-      const g = grid.value
       const view = rt.beatView
       let beat: BeatInput | undefined
-      if (src && g) {
+      view.phase = -1
+      if (src) {
         const heard = readAudioClock(src, rt.clock) - offsetMs.value / 1000
-        beat = rt.beatIn
-        beat.time = heard
-        beat.t0 = g.t0
-        beat.bpm = g.bpm
-        // Antes del primer bombo todavía no hay nada que marcar.
-        view.phase = heard >= g.t0 ? beatPhase(heard, g.t0, g.bpm) : -1
-      } else {
-        view.phase = -1
+        // El compás que se está oyendo. Antes del primer bombo no hay ninguno, y
+        // el juego va a su velocidad normal y sin remate al ritmo.
+        const bar = barAt(bars.value, heard)
+        if (bar) {
+          beat = rt.beatIn
+          beat.time = heard
+          beat.t0 = bar.t0
+          beat.bpm = bar.bpm
+          const d = dropInfo.value
+          beat.dropAt = d.goal === s.score[0] + s.score[1] ? d.at : -1
+          view.phase = beatPhase(heard, bar.t0, bar.bpm)
+        }
       }
 
       const rival = stepAi(rt.ai, s, 1, dt)
       stepGame(s, touch, rival, dt, beat)
+
+      if (view.shock.age >= 0) {
+        view.shock.age += dt
+        if (view.shock.age > SHOCK_LIFE) view.shock.age = -1
+      }
 
       for (let i = view.fx.length - 1; i >= 0; i--) {
         view.fx[i].age += dt
@@ -205,7 +235,11 @@ function Match({ width, height, insetX, level }: { width: number; height: number
           if (ev.side === 0 && ev.judge === 1) rt.goods++
           if (ev.judge > 0) view.fx.push({ judge: ev.judge, x: ev.x, y: ev.y, age: 0 })
         } else if (ev.type === 'goal') {
-          scheduleOnRN(playGoal)
+          scheduleOnRN(onGoal, s.score[0] + s.score[1], ev.at)
+        } else if (ev.type === 'drop') {
+          view.shock.x = ev.x
+          view.shock.y = ev.y
+          view.shock.age = 0
         }
       }
 
@@ -228,16 +262,19 @@ function Match({ width, height, insetX, level }: { width: number; height: number
       // El marcador es React normal y corriente: solo se le avisa cuando cambia
       // algo que enseña, no en cada frame.
       const seconds = Math.ceil(s.timeLeft)
+      const bpm = beat ? beat.bpm : 0
       const h = rt.hud
       if (
         h.score0 !== s.score[0] ||
         h.score1 !== s.score[1] ||
         h.seconds !== seconds ||
         h.phase !== s.phase ||
-        h.golden !== s.golden
+        h.golden !== s.golden ||
+        h.bpm !== bpm
       ) {
-        rt.hud = { score0: s.score[0], score1: s.score[1], seconds, phase: s.phase, golden: s.golden }
+        rt.hud = { score0: s.score[0], score1: s.score[1], seconds, phase: s.phase, golden: s.golden, bpm }
         scheduleOnRN(setHud, rt.hud)
+        progress.value = 1 - s.timeLeft / MATCH.DURATION
       }
 
       if (DEBUG.OVERLAY) {
@@ -247,7 +284,7 @@ function Match({ width, height, insetX, level }: { width: number; height: number
         if (rt.perfTime >= 0.5) {
           const fps = Math.round(rt.perfFrames / rt.perfTime)
           const work = (rt.perfWork / rt.perfFrames).toFixed(1)
-          const sound = src && g ? `audio ${Math.round(offsetMs.value)} ms` : 'sin audio'
+          const sound = beat ? `audio ${Math.round(offsetMs.value)} ms · ×${s.speed.toFixed(2)}` : 'sin audio'
           scheduleOnRN(setPerf, `${fps} fps · ${work} ms · ${sound}`)
           rt.perfTime = 0
           rt.perfFrames = 0
@@ -255,7 +292,22 @@ function Match({ width, height, insetX, level }: { width: number; height: number
         }
       }
     },
-    [grid, input, level, offsetMs, onEnded, painter, picture, playGoal, playHit, runtime, seed, source],
+    [
+      bars,
+      dropInfo,
+      input,
+      level,
+      offsetMs,
+      onEnded,
+      onGoal,
+      painter,
+      picture,
+      playHit,
+      progress,
+      runtime,
+      seed,
+      source,
+    ],
   )
   const loop = useFrameCallback(onFrame)
 
@@ -274,8 +326,11 @@ function Match({ width, height, insetX, level }: { width: number; height: number
     // Basta con tirar el estado: el siguiente frame crea un partido nuevo, con
     // un rival que no repetirá las mismas jugadas.
     seed.value = Math.floor(Math.random() * 2 ** 31)
+    progress.value = 0
+    dropInfo.value = { goal: -1, at: -1 }
+    restartMusic()
     runtime.value = null
-  }, [runtime, seed])
+  }, [dropInfo, progress, restartMusic, runtime, seed])
 
   const ended = hud.phase === 'ended'
 
@@ -299,7 +354,11 @@ function Match({ width, height, insetX, level }: { width: number; height: number
             {hud.score1}
           </Txt>
         </View>
-        {hud.phase === 'goal' && (
+        {/* El tempo a la vista: sube a lo largo del partido y se nota en el juego. */}
+        <Txt variant="data" tone="muted" style={styles.bpm}>
+          {hud.bpm > 0 ? `${hud.bpm} BPM` : ' '}
+        </Txt>
+        {(hud.phase === 'goal' || hud.phase === 'drop') && (
           <Txt variant="banner" style={styles.banner}>
             ¡GOL!
           </Txt>
@@ -362,7 +421,8 @@ const styles = StyleSheet.create({
   },
   // Ancho fijo: si no, el marcador se ensancha y encoge cada vez que cambia el reloj.
   clock: { minWidth: 88, textAlign: 'center' },
-  banner: { marginTop: space.xxl },
+  banner: { marginTop: space.lg },
+  bpm: { marginTop: space.xs },
   perf: { position: 'absolute', top: space.xs },
   exit: {
     position: 'absolute',

@@ -124,11 +124,18 @@ export const KICK = {
 }
 
 export const BEAT = {
-  /** Tempo de la música. En la fase de drops pasará a subir durante el partido. */
-  BPM: 120,
+  /**
+   * El tempo sube a lo largo del partido, de BPM_START a BPM_END, compás a
+   * compás. La velocidad del juego sube con él: a 145 BPM todo va un 21 % más
+   * rápido que a 120.
+   */
+  BPM_START: 120,
+  BPM_END: 145,
   /**
    * Ventanas del remate al ritmo: distancia máxima, en milisegundos, entre el
-   * toque al vinilo y el beat más cercano.
+   * toque al vinilo y el beat más cercano, medidas a BPM_START. Al subir el
+   * tempo se encogen en la misma proporción: siempre son la misma fracción del
+   * compás, y con el juego más rápido no se vuelve más fácil acertar.
    */
   PERFECT_MS: 80,
   GOOD_MS: 160,
@@ -215,6 +222,12 @@ export const AI = {
   BEAT_AIM: 0.05,
 }
 
+/** La onda expansiva del drop: cuánto lanza al que encajó el gol. */
+export const SHOCK = {
+  PUSH_X: 620,
+  PUSH_Y: 520,
+}
+
 export const CALIBRATION = {
   /**
    * Tempo del metrónomo de calibrar. Más lento que el del juego a propósito:
@@ -233,10 +246,25 @@ export const CALIBRATION = {
 }
 
 export const MATCH = {
-  /** Duración del partido en segundos. Con empate al final, gol de oro. */
+  /**
+   * Duración del partido en segundos de verdad, no de juego: aunque al final
+   * todo vaya más rápido, el reloj marca segundos normales. Con empate al
+   * final, gol de oro.
+   */
   DURATION: 90,
-  /** Pausa tras un gol antes de volver a sacar. */
-  GOAL_PAUSE: 1.3,
+  /**
+   * Cada gol es un drop. Primero, el partido se congela mientras la música se
+   * filtra y sube la tensión; luego, en un beat, cae el drop. La congelación
+   * dura al menos MIN_FREEZE y acaba en el primer beat a partir de ahí, así
+   * que a 120 BPM va de 0,75 a 1,25 s.
+   */
+  MIN_FREEZE: 0.75,
+  /** Sin música (o si la música no responde), la congelación dura esto. */
+  GOAL_FREEZE: 1,
+  /** Tope de seguridad: si el drop no llega, el partido sigue igual. */
+  MAX_FREEZE: 2.2,
+  /** Lo que se deja correr tras el drop (rival volando, vinilo en la red) antes de sacar. */
+  DROP_AFTER: 0.9,
   /** Congelación antes de que caiga el vinilo en el saque. */
   KICKOFF_DELAY: 0.8,
 }

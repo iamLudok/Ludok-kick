@@ -41,13 +41,18 @@ function play(l0: Level | null, l1: Level | null, seed: number): Result {
   const r: Result = { score: [0, 0], ended: false, kicks: [0, 0], perfectKicks: [0, 0], longestIdle: 0 }
   let t = 0
   let still = 0
+  // Como hace la música de verdad: al marcarse un gol, contesta con el
+  // instante del drop.
+  const beat = { time: 0, t0: 0.3, bpm: 120, dropAt: -1 }
   // El tope de tiempo cubre un gol de oro largo; si se pasa, el partido no acabó.
   for (let i = 0; i < (MATCH.DURATION + 60) / DT && s.phase !== 'ended'; i++) {
     t += DT
     // Copia del input: la IA reutiliza su objeto de salida en cada frame.
     const in0: InputFrame = ai[0] ? { ...stepAi(ai[0], s, 0, DT) } : idle
     const in1: InputFrame = ai[1] ? { ...stepAi(ai[1], s, 1, DT) } : idle
-    stepGame(s, in0, in1, DT, { time: t, t0: 0.3, bpm: 120 })
+    beat.time = t
+    stepGame(s, in0, in1, DT, beat)
+    for (const e of s.events) if (e.type === 'goal') beat.dropAt = e.at + MATCH.GOAL_FREEZE
     // Parado de verdad: un vinilo empujado con el cuerpo no cuenta como toque,
     // pero se mueve, y eso no es un atasco.
     const moving = Math.abs(s.ball.vx) + Math.abs(s.ball.vy) >= 60

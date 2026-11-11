@@ -1,39 +1,52 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState, type AppStateStatus } from 'react-native'
 import { useSharedValue, type SharedValue } from 'react-native-reanimated'
-import type { Judge } from '../game/types'
+import type { Bar, Judge } from '../game/types'
 import type { ClockSource } from './clock'
 import { getEngine, setEngineRunning } from './engine'
 import type { Pattern } from './patterns'
 import { startSequencer, type Sequencer } from './sequencer'
 import { goalSfx, hitSfx } from './synth'
 
-/** Dónde caen los beats de lo que está sonando. */
-export type BeatGrid = { t0: number; bpm: number }
-
 export type AudioSession = {
   /** El reloj de audio, legible desde el hilo del juego. null hasta que arranca. */
   source: SharedValue<ClockSource | null>
-  grid: SharedValue<BeatGrid | null>
+  /** Los últimos compases programados, con su tempo. Vacío hasta que arranca. */
+  bars: SharedValue<Bar[]>
   /** Lo que el propio móvil dice que tarda su salida de audio; 0 si no lo sabe. */
   deviceLatencyMs: number
   playHit: (judge: Judge) => void
   playGoal: () => void
+  /** Prepara el drop a partir de `from` (reloj de audio) y devuelve cuándo cae; -1 si no suena. */
+  drop: (from: number) => number
+  /** La canción vuelve a la intro (nuevo partido). */
+  restart: () => void
 }
 
 /**
  * Pone música mientras la pantalla que lo usa esté abierta y la app en primer
  * plano. Al salir a otra app se congela todo (música y reloj) y al volver
  * sigue por el mismo compás.
+ *
+ * `bpm` puede ser un número fijo o una función a la que se pregunta el tempo
+ * al empezar cada compás.
  */
-export function useAudioSession(pattern: Pattern, bpm: number, volume: { music: number; sfx: number }): AudioSession {
+export function useAudioSession(
+  pattern: Pattern,
+  bpm: number | (() => number),
+  volume: { music: number; sfx: number },
+): AudioSession {
   const source = useSharedValue<ClockSource | null>(null)
-  const grid = useSharedValue<BeatGrid | null>(null)
+  const bars = useSharedValue<Bar[]>([])
   const [deviceLatencyMs, setDeviceLatencyMs] = useState(0)
+  const seqRef = useRef<Sequencer | null>(null)
+  // La función de tempo puede cambiar entre renders; el secuenciador siempre
+  // pregunta a la última.
+  const bpmRef = useRef(bpm)
+  bpmRef.current = bpm
 
   useEffect(() => {
     const e = getEngine()
-    let seq: Sequencer | null = null
     let mounted = true
     let wanted = false
     let probe: ReturnType<typeof setTimeout> | null = null
@@ -44,12 +57,19 @@ export function useAudioSession(pattern: Pattern, bpm: number, volume: { music: 
       // Mientras se encendía el audio pueden haber cerrado la pantalla o
       // mandado la app a segundo plano.
       if (!mounted || !wanted) return
-      if (seq) {
-        seq.resume()
+      if (seqRef.current) {
+        seqRef.current.resume()
       } else {
-        seq = startSequencer(e, pattern, bpm)
+        seqRef.current = startSequencer(e, pattern, {
+          bpm: () => {
+            const b = bpmRef.current
+            return typeof b === 'number' ? b : b()
+          },
+          onBars: (next) => {
+            bars.value = next
+          },
+        })
         source.value = e.ctx.context
-        grid.value = { t0: seq.t0, bpm }
       }
       // La latencia solo se puede preguntar con el audio ya sonando.
       probe = setTimeout(() => {
@@ -59,7 +79,7 @@ export function useAudioSession(pattern: Pattern, bpm: number, volume: { music: 
 
     const pause = () => {
       wanted = false
-      seq?.pause()
+      seqRef.current?.pause()
       void setEngineRunning(false)
     }
 
@@ -75,11 +95,12 @@ export function useAudioSession(pattern: Pattern, bpm: number, volume: { music: 
       wanted = false
       sub.remove()
       if (probe) clearTimeout(probe)
-      seq?.stop()
-      grid.value = null
+      seqRef.current?.stop()
+      seqRef.current = null
+      bars.value = []
       void setEngineRunning(false)
     }
-    // La base y el tempo de una pantalla no cambian mientras está abierta.
+    // La base de una pantalla no cambia mientras está abierta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -91,6 +112,8 @@ export function useAudioSession(pattern: Pattern, bpm: number, volume: { music: 
 
   const playHit = useCallback((judge: Judge) => hitSfx(getEngine(), judge), [])
   const playGoal = useCallback(() => goalSfx(getEngine()), [])
+  const drop = useCallback((from: number) => seqRef.current?.drop(from) ?? -1, [])
+  const restart = useCallback(() => seqRef.current?.restart(), [])
 
-  return { source, grid, deviceLatencyMs, playHit, playGoal }
+  return { source, bars, deviceLatencyMs, playHit, playGoal, drop, restart }
 }

@@ -1,7 +1,13 @@
 /** 0 es el jugador de la izquierda (ataca hacia la derecha); 1, el de la derecha. */
 export type Side = 0 | 1
 
-export type Phase = 'kickoff' | 'play' | 'goal' | 'ended'
+/**
+ * - kickoff: todos en su sitio, el vinilo aún no cae.
+ * - goal: congelado tras un gol, esperando el drop.
+ * - drop: el drop ya cayó; la física corre un momento (rival volando, vinilo
+ *   en la red) y luego se saca.
+ */
+export type Phase = 'kickoff' | 'play' | 'goal' | 'drop' | 'ended'
 
 /**
  * Lo que un jugador «quiere hacer» en un paso. El núcleo solo conoce esto: le
@@ -57,7 +63,10 @@ export type BallState = {
 export type Judge = 0 | 1 | 2
 
 export type GameEvent =
-  | { type: 'goal'; side: Side }
+  /** `at` es el instante (reloj de audio, ya corregido) en que se marcó; -1 sin música. */
+  | { type: 'goal'; side: Side; at: number }
+  /** Cae el drop: `side` es quien marcó, y (x, y) el centro de la onda. */
+  | { type: 'drop'; side: Side; x: number; y: number }
   /** Un toque al vinilo, con el pie o con la cabeza, y dónde estaba el vinilo. */
   | { type: 'kick' | 'head'; side: Side; judge: Judge; x: number; y: number }
   | { type: 'bounce'; speed: number }
@@ -75,7 +84,12 @@ export type BeatState = {
   /** Instante de un beat cualquiera; el resto caen cada 60 / bpm segundos. */
   t0: number
   bpm: number
+  /** Cuándo cae el drop del último gol, según la música; -1 si aún no se sabe. */
+  dropAt: number
 }
+
+/** Un compás tal como lo programó la música: cuándo empieza y a qué tempo va. */
+export type Bar = { t0: number; bpm: number }
 
 /** Resultado de una colisión. Vive en el estado para no crear un objeto por choque. */
 export type Contact = {
@@ -101,4 +115,8 @@ export type GameState = {
   events: GameEvent[]
   contact: Contact
   beat: BeatState
+  /** Velocidad del juego respecto a BPM_START: sube con el tempo. */
+  speed: number
+  /** Quién marcó el último gol, para la onda del drop. */
+  scorer: Side
 }

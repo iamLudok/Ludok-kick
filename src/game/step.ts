@@ -9,9 +9,9 @@
  * segundo, crear objetos en cada paso acaba en pausas del recolector de basura,
  * que en un juego se notan como tirones.
  */
-import { beatDelta, judgeDelta, judgePower } from './beat'
-import { BALL, BODY, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, SIM } from './constants'
-import { resetForKickoff } from './state'
+import { beatDelta, judgeDelta, judgePower, speedAt } from './beat'
+import { BALL, BODY, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, SHOCK, SIM } from './constants'
+import { emptyInput, resetForKickoff } from './state'
 import type { Contact, GameState, InputFrame, Judge, PlayerState, Side } from './types'
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -289,7 +289,7 @@ function judgeTouch(s: GameState): Judge {
   'worklet'
   const bt = s.beat
   if (!bt.on) return 0
-  return judgeDelta(beatDelta(bt.now, bt.t0, bt.bpm))
+  return judgeDelta(beatDelta(bt.now, bt.t0, bt.bpm), bt.bpm)
 }
 
 function ballVsPlayer(s: GameState, p: PlayerState): void {
@@ -408,7 +408,7 @@ function updateBall(s: GameState, dt: number): void {
     b.vx *= 1 - BALL.ROLL_FRICTION * dt
   }
   // La red frena el vinilo tras el gol para que no salga rebotado de la portería.
-  if (s.phase === 'goal' && (b.x < GOAL.DEPTH || b.x > FIELD.W - GOAL.DEPTH)) {
+  if (s.phase === 'drop' && (b.x < GOAL.DEPTH || b.x > FIELD.W - GOAL.DEPTH)) {
     b.vx *= 1 - 5 * dt
   }
 
@@ -445,30 +445,74 @@ function checkGoal(s: GameState): void {
   else if (b.x > FIELD.W - line && b.y > roofYAt(FIELD.W - b.x)) scorer = 0
   if (scorer === -1) return
   s.score[scorer] += 1
+  s.scorer = scorer
   s.phase = 'goal'
-  s.phaseT = MATCH.GOAL_PAUSE
-  s.events.push({ type: 'goal', side: scorer })
+  s.phaseT = 0
+  s.events.push({ type: 'goal', side: scorer, at: s.beat.on ? s.beat.now : -1 })
 }
 
-function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number): void {
+/** ¿Toca ya el drop? `waited` es lo que lleva congelado, en segundos de verdad. */
+function dropDue(s: GameState, waited: number): boolean {
+  'worklet'
+  if (waited >= MATCH.MAX_FREEZE) return true
+  const bt = s.beat
+  // Sin música, una pausa fija. Con música, el instante que diga ella, que es
+  // un beat; mientras no lo ha dicho (tarda unos milisegundos), se espera.
+  if (!bt.on) return waited >= MATCH.GOAL_FREEZE
+  return bt.dropAt >= 0 && bt.now >= bt.dropAt
+}
+
+/**
+ * Cae el drop: la onda expansiva sale de quien marcó y lanza por los aires al
+ * que encajó. Es sobre todo espectáculo: después se saca igual.
+ */
+function drop(s: GameState): void {
+  'worklet'
+  const scorer = s.players[s.scorer]
+  const rival = s.players[s.scorer === 0 ? 1 : 0]
+  const away = rival.x !== scorer.x ? Math.sign(rival.x - scorer.x) : rival.facing * -1
+  rival.vx = away * SHOCK.PUSH_X
+  rival.vy = -SHOCK.PUSH_Y
+  rival.grounded = false
+  s.phase = 'drop'
+  s.phaseT = MATCH.DROP_AFTER
+  s.events.push({ type: 'drop', side: s.scorer, x: scorer.x, y: scorer.y - PLAYER.HEAD_CY })
+}
+
+const IDLE = emptyInput()
+
+/**
+ * Un paso de simulación. `dt` es tiempo de juego (siempre SIM.DT); `realDt` es
+ * lo que dura ese paso en el mundo, que es menos cuando el tempo sube. Los
+ * relojes (el del partido, las pausas) van en segundos de verdad.
+ */
+function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number, realDt: number): void {
   'worklet'
   s.tick += 1
   if (s.phase === 'ended') return
   if (s.phase === 'kickoff') {
-    s.phaseT -= dt
+    s.phaseT -= realDt
     if (s.phaseT <= 0) s.phase = 'play'
     return
   }
+  if (s.phase === 'goal') {
+    // Congelado de verdad: ni el vinilo se mueve. Solo cuenta lo que se espera.
+    s.phaseT += realDt
+    if (dropDue(s, s.phaseT)) drop(s)
+    return
+  }
 
-  updatePlayer(s, s.players[0], in0, dt)
-  updatePlayer(s, s.players[1], in1, dt)
+  // Tras el drop nadie manda: los jugadores van a donde los lleve la onda.
+  const live = s.phase === 'play'
+  updatePlayer(s, s.players[0], live ? in0 : IDLE, dt)
+  updatePlayer(s, s.players[1], live ? in1 : IDLE, dt)
   separatePlayers(s.players[0], s.players[1])
   updateBall(s, dt)
 
-  if (s.phase === 'play') {
+  if (live) {
     checkGoal(s)
     if (s.phase === 'play' && !s.golden) {
-      s.timeLeft -= dt
+      s.timeLeft -= realDt
       if (s.timeLeft <= 0) {
         s.timeLeft = 0
         if (s.score[0] === s.score[1]) s.golden = true
@@ -478,9 +522,9 @@ function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number): void 
     return
   }
 
-  // Fase 'goal': se deja correr la física un momento y luego se saca, salvo
+  // Fase 'drop': se deja correr la física un momento y luego se saca, salvo
   // que ese gol decidiera el partido.
-  s.phaseT -= dt
+  s.phaseT -= realDt
   if (s.phaseT > 0) return
   const decided = s.score[0] !== s.score[1] && (s.golden || s.timeLeft <= 0)
   if (decided) s.phase = 'ended'
@@ -489,34 +533,42 @@ function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number): void 
 
 /** El pulso de la música en el instante en que acaba este frame. */
 export type BeatInput = {
+  /** Lo que el jugador está oyendo ahora, en segundos del reloj de audio. */
   time: number
+  /** El compás que suena: cuándo empezó y a qué tempo va. */
   t0: number
   bpm: number
+  /** Cuándo cae el drop del gol en curso; -1 si la música aún no lo ha dicho. */
+  dropAt: number
 }
 
 /**
  * Avanza el partido `frameDt` segundos de reloj, en pasos fijos de SIM.DT. Lo
  * que sobra se guarda en `s.acc` para el frame siguiente.
  *
- * `beat` es opcional: sin él se juega igual, solo que ningún toque cuenta como
- * dado a tiempo.
+ * Con música, el juego va más rápido cuanto más alto el tempo: un segundo de
+ * reloj son `bpm / BPM_START` segundos de juego. `beat` es opcional: sin él se
+ * juega a velocidad normal y ningún toque cuenta como dado a tiempo.
  */
 export function stepGame(s: GameState, in0: InputFrame, in1: InputFrame, frameDt: number, beat?: BeatInput): void {
   'worklet'
   s.events.length = 0
-  s.acc += Math.min(frameDt, SIM.MAX_STEPS * SIM.DT)
   const bt = s.beat
   bt.on = beat !== undefined
   if (beat) {
     bt.t0 = beat.t0
     bt.bpm = beat.bpm
+    bt.dropAt = beat.dropAt
   }
+  s.speed = beat ? speedAt(beat.bpm) : 1
+  s.acc += Math.min(frameDt * s.speed, SIM.MAX_STEPS * SIM.DT)
+  const realStep = SIM.DT / s.speed
   while (s.acc >= SIM.DT) {
     // Cada paso ocurre un poco antes del final del frame: lo que quede por
     // simular después de él. Así un toque se juzga en su instante y no en el
     // del frame, que a 60 Hz podía caer hasta 16 ms más tarde.
-    if (beat) bt.now = beat.time - (s.acc - SIM.DT)
-    tick(s, in0, in1, SIM.DT)
+    if (beat) bt.now = beat.time - (s.acc - SIM.DT) / s.speed
+    tick(s, in0, in1, SIM.DT, realStep)
     s.acc -= SIM.DT
   }
 }

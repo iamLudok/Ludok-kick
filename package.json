@@ -39,13 +39,14 @@
     "android": "expo run:android",
     "typecheck": "tsc --noEmit && tsc --noEmit -p verify",
     "verify:physics": "tsx verify/physics.ts",
-    "verify": "npm run verify:physics && npm run verify:beat && npm run verify:ai && npm run verify:data && npm run verify:library && npm run verify:migration",
+    "verify": "npm run verify:physics && npm run verify:beat && npm run verify:sequencer && npm run verify:ai && npm run verify:data && npm run verify:library && npm run verify:migration",
     "build:apk": "bash scripts/build-apk.sh",
     "verify:beat": "tsx verify/beat.ts",
     "verify:data": "tsx verify/data.ts",
     "verify:library": "tsx verify/library.ts",
     "verify:migration": "tsx verify/migration.ts",
-    "verify:ai": "tsx verify/ai.ts"
+    "verify:ai": "tsx verify/ai.ts",
+    "verify:sequencer": "tsx verify/sequencer.ts"
   },
   "private": true
 }

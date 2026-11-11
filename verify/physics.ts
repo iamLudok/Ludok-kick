@@ -149,10 +149,14 @@ function randomInput(r: () => number): InputFrame {
     goal = s.events.some((e) => e.type === 'goal' && e.side === 0)
   }
   check('un tiro raso a la portería derecha es gol del jugador izquierdo', goal && s.score[0] === 1 && s.score[1] === 0)
-  check('tras el gol hay pausa', s.phase === 'goal')
-  run(s, MATCH.GOAL_PAUSE * 0.5)
+  check('tras el gol el partido se congela', s.phase === 'goal')
+  const frozen = JSON.stringify([s.ball, s.players])
+  run(s, MATCH.GOAL_FREEZE * 0.5)
+  check('congelado de verdad: nada se mueve', JSON.stringify([s.ball, s.players]) === frozen)
   check('durante la pausa no se vuelve a contar', s.score[0] === 1)
-  run(s, MATCH.GOAL_PAUSE)
+  run(s, MATCH.GOAL_FREEZE * 0.5 + 0.05)
+  check('sin música, el drop cae a la pausa fija', s.phase === 'drop')
+  run(s, MATCH.DROP_AFTER + 0.05)
   const inPlace = s.players[0].x === PLAYER.START_X && s.players[1].x === FIELD.W - PLAYER.START_X
   check('después se saca con todos en su sitio', (s.phase === 'kickoff' || s.phase === 'play') && inPlace && s.ball.x === FIELD.W / 2)
 }
@@ -193,7 +197,7 @@ function randomInput(r: () => number): InputFrame {
   s.ball.y = FIELD.GROUND_Y - BALL.R
   s.ball.vx = 700
   s.players[1].x = FIELD.W / 2 + 60
-  run(s, MATCH.GOAL_PAUSE + 1.5)
+  run(s, MATCH.GOAL_FREEZE + MATCH.DROP_AFTER + 1.5)
   check('y el gol de oro acaba el partido', s.phase === 'ended' && s.score[0] === 1)
 }
 

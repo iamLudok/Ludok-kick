@@ -8,7 +8,7 @@ import { scheduleOnRN } from 'react-native-worklets'
 import { createAudioClock, readAudioClock, type AudioClock } from '../audio/clock'
 import { METRONOME_PATTERN } from '../audio/patterns'
 import { useAudioSession } from '../audio/useAudioSession'
-import { beatDelta, beatPhase } from '../game/beat'
+import { barAt, beatDelta, beatPhase } from '../game/beat'
 import { BEAT, CALIBRATION } from '../game/constants'
 import { useSettings } from '../hooks/useSettings'
 import { importBackup, pickJsonFile, shareBackup } from '../lib/backup'
@@ -38,7 +38,7 @@ export function SettingsScreen() {
     music: settings.musicVolume,
     sfx: settings.sfxVolume,
   })
-  const { source, grid } = audio
+  const { source, bars } = audio
 
   const calibrated = settings.audioOffsetMs !== undefined
   const offset = effectiveOffsetMs(settings, audio.deviceLatencyMs)
@@ -63,8 +63,7 @@ export function SettingsScreen() {
   const onFrame = useCallback(() => {
     'worklet'
     const src = source.value
-    const g = grid.value
-    if (!src || !g) {
+    if (!src || bars.value.length === 0) {
       pulse.value = 0
       clockOffset.value = null
       return
@@ -79,8 +78,9 @@ export function SettingsScreen() {
     // El destello usa el desfase guardado: si está bien calibrado, se ve
     // exactamente cuando se oye el bombo. Es la forma de comprobarlo a ojo.
     const heard = now - offsetMs.value / 1000
-    pulse.value = heard >= g.t0 ? Math.exp(-beatPhase(heard, g.t0, g.bpm) * 6) : 0
-  }, [clock, clockOffset, grid, offsetMs, pulse, source])
+    const bar = barAt(bars.value, heard)
+    pulse.value = bar ? Math.exp(-beatPhase(heard, bar.t0, bar.bpm) * 6) : 0
+  }, [bars, clock, clockOffset, offsetMs, pulse, source])
   const loop = useFrameCallback(onFrame)
 
   useEffect(() => {
@@ -96,13 +96,13 @@ export function SettingsScreen() {
         .onTouchesDown((_e, manager) => {
           'worklet'
           manager.activate()
-          const g = grid.value
           const diff = clockOffset.value
-          if (!g || diff === null) return
+          if (diff === null) return
           // Se mide contra el beat tal como se PROGRAMÓ, sin desfase: lo que
           // sale es justo el desfase que hay que guardar.
           const at = performance.now() / 1000 + diff
-          if (at < g.t0) return
+          const g = barAt(bars.value, at)
+          if (!g) return
           let delta = beatDelta(at, g.t0, g.bpm) * 1000
           // Un toque nunca llega mucho antes que el sonido: si «se adelanta»
           // más que esto, en realidad va tarde respecto al beat anterior.
@@ -117,7 +117,7 @@ export function SettingsScreen() {
           'worklet'
           manager.end()
         }),
-    [addTap, clockOffset, grid],
+    [addTap, bars, clockOffset],
   )
 
   const dotStyle = useAnimatedStyle(() => ({

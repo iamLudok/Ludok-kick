@@ -4,11 +4,11 @@
  * es la cuenta (a qué distancia del beat cae un toque y qué premio le toca),
  * no el sonido.
  */
-import { beatDelta, beatPhase, judgeDelta } from '../src/game/beat'
-import { BALL, BEAT, FIELD, MATCH } from '../src/game/constants'
+import { barAt, beatDelta, beatPhase, judgeDelta, speedAt, tempoAt } from '../src/game/beat'
+import { BALL, BEAT, FIELD, GOAL, MATCH, PLAYER, SHOCK } from '../src/game/constants'
 import { createInitialState, emptyInput } from '../src/game/state'
 import { stepGame } from '../src/game/step'
-import type { GameEvent, GameState, InputFrame } from '../src/game/types'
+import type { GameEvent, GameState, InputFrame, Phase } from '../src/game/types'
 
 let failures = 0
 
@@ -30,10 +30,40 @@ const near = (a: number, b: number, eps = 1e-9) => Math.abs(a - b) < eps
   check('la fase va de 0 a 1', near(beatPhase(10.5, 10, 120), 0) && near(beatPhase(10.875, 10, 120), 0.75))
   check('otro tempo, otro periodo', near(beatDelta(10.4, 10, 150), 0))
 
-  check('dentro de la ventana PERFECT', judgeDelta(BEAT.PERFECT_MS / 1000 - 0.001) === 2)
-  check('adelantarse cuenta igual que atrasarse', judgeDelta(-(BEAT.PERFECT_MS / 1000 - 0.001)) === 2)
-  check('entre PERFECT y GOOD es GOOD', judgeDelta((BEAT.PERFECT_MS + 1) / 1000) === 1 && judgeDelta((BEAT.GOOD_MS - 1) / 1000) === 1)
-  check('fuera de la ventana es un tiro normal', judgeDelta((BEAT.GOOD_MS + 1) / 1000) === 0)
+  const B = BEAT.BPM_START
+  check('dentro de la ventana PERFECT', judgeDelta(BEAT.PERFECT_MS / 1000 - 0.001, B) === 2)
+  check('adelantarse cuenta igual que atrasarse', judgeDelta(-(BEAT.PERFECT_MS / 1000 - 0.001), B) === 2)
+  check('entre PERFECT y GOOD es GOOD', judgeDelta((BEAT.PERFECT_MS + 1) / 1000, B) === 1 && judgeDelta((BEAT.GOOD_MS - 1) / 1000, B) === 1)
+  check('fuera de la ventana es un tiro normal', judgeDelta((BEAT.GOOD_MS + 1) / 1000, B) === 0)
+}
+
+/* --- El tempo sube con el partido ---------------------------------------- */
+{
+  check('empieza a BPM_START', tempoAt(0) === BEAT.BPM_START)
+  check('acaba a BPM_END', tempoAt(1) === BEAT.BPM_END)
+  check('a mitad de partido va por la mitad', tempoAt(0.5) === Math.round((BEAT.BPM_START + BEAT.BPM_END) / 2))
+  check('en el gol de oro no se pasa de BPM_END', tempoAt(1.4) === BEAT.BPM_END)
+  let rising = true
+  for (let p = 0; p < 1; p += 0.01) if (tempoAt(p + 0.01) < tempoAt(p)) rising = false
+  check('nunca baja', rising)
+  check('a BPM_START el juego va a velocidad normal', speedAt(BEAT.BPM_START) === 1)
+
+  // A más tempo, la ventana en milisegundos se encoge en la misma proporción.
+  const end = BEAT.BPM_END
+  const perfectAtEnd = (BEAT.PERFECT_MS * BEAT.BPM_START) / end
+  check('a BPM_END la ventana PERFECT se encoge', judgeDelta((perfectAtEnd - 1) / 1000, end) === 2 && judgeDelta((perfectAtEnd + 1) / 1000, end) === 1, `${perfectAtEnd.toFixed(1)} ms`)
+  check('lo mismo que a BPM_START era PERFECT, a BPM_END ya no', judgeDelta((BEAT.PERFECT_MS - 1) / 1000, end) === 1)
+
+  // Compases con tempos distintos: se cuenta desde el compás que suena.
+  const bars = [
+    { t0: 10, bpm: 120 },
+    { t0: 12, bpm: 140 },
+  ]
+  check('antes del primer compás no hay compás', barAt(bars, 9) === null)
+  check('dentro de un compás, ese compás', barAt(bars, 11.9)?.bpm === 120 && barAt(bars, 12)?.bpm === 140)
+  const bar = barAt(bars, 12.43)!
+  check('los beats del compás nuevo caen a su tempo', near(beatDelta(12 + 60 / 140, bar.t0, bar.bpm), 0))
+  check('y el cambio de compás es un beat', near(beatDelta(12.001, barAt(bars, 12.001)!.t0, 140), 0.001) && near(beatDelta(11.999, barAt(bars, 11.999)!.t0, 120), -0.001))
 }
 
 /* --- En el partido ------------------------------------------------------- */
@@ -71,7 +101,7 @@ function kickAt(offsetMs: number | null): { event: Extract<GameEvent, { type: 'k
   const contactTime = 100 + contactTick / 120
   const t0 = offsetMs === null ? 0 : contactTime - offsetMs / 1000
   for (let i = 1; i <= 30; i++) {
-    const beat = offsetMs === null ? undefined : { time: 100 + i / 60, t0, bpm: BEAT.BPM }
+    const beat = offsetMs === null ? undefined : { time: 100 + i / 60, t0, bpm: BEAT.BPM_START, dropAt: -1 }
     stepGame(s, KICK, IDLE, 1 / 60, beat)
     const e = s.events.find((ev) => ev.type === 'kick')
     if (e && e.type === 'kick') return { event: e, s }
@@ -111,6 +141,78 @@ function kickAt(offsetMs: number | null): { event: Extract<GameEvent, { type: 'k
   // dar el mismo juicio aunque en un caso el frame acabe 8 ms más tarde.
   const edge = BEAT.PERFECT_MS - 3
   check('el juicio en el borde de la ventana no depende de los fps', kickAt(edge).event.judge === 2 && kickAt(edge + 6).event.judge === 1)
+}
+
+/* --- La velocidad del juego sigue al tempo ------------------------------- */
+{
+  const at = (bpm: number) => {
+    const s = createInitialState()
+    let t = 0
+    for (let i = 0; i < 60 * 3; i++) {
+      t += 1 / 60
+      stepGame(s, IDLE, IDLE, 1 / 60, { time: t, t0: 0, bpm, dropAt: -1 })
+    }
+    return s
+  }
+  const slow = at(BEAT.BPM_START)
+  const fast = at(BEAT.BPM_END)
+  check('a más tempo, más pasos de simulación por segundo', near(fast.tick / slow.tick, BEAT.BPM_END / BEAT.BPM_START, 0.01), `${slow.tick} → ${fast.tick}`)
+  check('pero el reloj del partido sigue en segundos de verdad', near(slow.timeLeft, fast.timeLeft, 0.02), `${slow.timeLeft.toFixed(3)} / ${fast.timeLeft.toFixed(3)}`)
+}
+
+/* --- El drop cae cuando dice la música ----------------------------------- */
+{
+  // Un gol, y la música dice que el drop cae en `dropAt`.
+  const s = createInitialState()
+  let t = 0
+  const beat = { time: 0, t0: 0, bpm: BEAT.BPM_START, dropAt: -1 }
+  const frame = (n: number) => {
+    for (let i = 0; i < n; i++) {
+      t += 1 / 60
+      beat.time = t
+      stepGame(s, IDLE, IDLE, 1 / 60, beat)
+      for (const e of s.events) events.push({ ...e, t })
+    }
+  }
+  const events: ({ t: number } & GameEvent)[] = []
+  frame(60)
+  s.players[0].x = 400
+  s.players[1].x = FIELD.W - 300
+  s.ball.x = FIELD.W - 160
+  s.ball.y = FIELD.GROUND_Y - BALL.R
+  s.ball.vx = 700
+  frame(30)
+  const goal = events.find((e) => e.type === 'goal')
+  check('el gol dice cuándo se marcó, en tiempo de audio', goal !== undefined && goal.type === 'goal' && goal.at > 0)
+  frame(30)
+  check('mientras la música no dice cuándo, sigue congelado', s.phase === 'goal')
+  beat.dropAt = t + 0.5
+  frame(20)
+  // `as Phase`: TypeScript da por hecho que `s.phase` no ha cambiado desde la
+  // comprobación de arriba, pero `frame` lo cambia por dentro.
+  check('antes del instante del drop, congelado', (s.phase as Phase) === 'goal')
+  frame(15)
+  const drop = events.find((e) => e.type === 'drop')
+  check('el drop cae en su instante, al frame', drop !== undefined && Math.abs(drop.t - beat.dropAt) <= 1 / 60 + 1e-9, drop ? `${((drop.t - beat.dropAt) * 1000).toFixed(1)} ms` : 'no cayó')
+  check('la onda lanza por los aires al que encajó', s.players[1].vy < 0 && s.players[1].vx > 0, `v=(${s.players[1].vx.toFixed(0)}, ${s.players[1].vy.toFixed(0)})`)
+  check('y sale desde quien marcó', drop?.type === 'drop' && drop.side === 0 && Math.abs(drop.x - s.players[0].x) < 20)
+  const before = s.players[0].x
+  frame(10)
+  check('tras el drop nadie controla a su jugador', Math.abs(s.players[0].x - before) < 1)
+  frame(Math.ceil(MATCH.DROP_AFTER * 60))
+  check('y luego se saca', s.phase === 'kickoff' || s.phase === 'play')
+
+  // Si la música no contesta nunca, el partido no se queda colgado.
+  const stuck = createInitialState()
+  stuck.phase = 'goal'
+  stuck.phaseT = 0
+  let tt = 0
+  for (let i = 0; i < 60 * (MATCH.MAX_FREEZE + 0.1); i++) {
+    tt += 1 / 60
+    stepGame(stuck, IDLE, IDLE, 1 / 60, { time: tt, t0: 0, bpm: BEAT.BPM_START, dropAt: -1 })
+  }
+  check('sin respuesta de la música, el drop cae igual al rato', (stuck.phase as Phase) === 'drop')
+  check('las constantes de la onda tienen sentido', SHOCK.PUSH_X > 0 && SHOCK.PUSH_Y > 0 && GOAL.HEIGHT > PLAYER.HEAD_R)
 }
 
 console.log(failures === 0 ? '\n✔ beat: todo correcto' : `\n✘ beat: ${failures} fallo(s)`)
