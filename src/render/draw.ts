@@ -13,19 +13,34 @@ import {
   StrokeCap,
   TileMode,
   createPicture,
+  matchFont,
   type SkCanvas,
+  type SkFont,
   type SkPaint,
   type SkPath,
   type SkPicture,
 } from '@shopify/react-native-skia'
 import { BALL, FIELD, GOAL, KICK, PLAYER } from '../game/constants'
 import { kickAngle } from '../game/step'
-import type { GameState, InputFrame, PlayerState } from '../game/types'
+import type { GameState, InputFrame, Judge, PlayerState } from '../game/types'
 import { palette } from '../ui/theme'
 import type { StagePalette } from './stage'
 import { fitWorld, layoutControls, type ControlsLayout, type Point, type View } from './view'
 
 type Bounds = { x: number; y: number; width: number; height: number }
+
+/** Un cartel de PERFECT o GOOD flotando donde se tocó el vinilo. */
+export type Fx = { judge: Judge; x: number; y: number; age: number }
+
+/** Segundos que dura un cartel en pantalla. */
+export const FX_LIFE = 0.75
+
+/** Lo que el dibujo necesita saber del ritmo en este frame. */
+export type BeatView = {
+  /** 0 justo en el beat, casi 1 justo antes del siguiente; -1 si no hay música. */
+  phase: number
+  fx: Fx[]
+}
 
 export type Painter = {
   view: View
@@ -55,7 +70,22 @@ export type Painter = {
   buttonRing: SkPaint
   icon: SkPaint
   icons: { left: SkPath; right: SkPath; jump: SkPath; kick: SkPath }
+  cone: SkPaint
+  coneRing: SkPaint
+  coneDome: SkPaint
+  /** Estos cuatro cambian de transparencia en cada frame, al son del beat. */
+  floorPulse: SkPaint
+  beatRing: SkPaint
+  beatFlash: SkPaint
+  burst: SkPaint
+  font: SkFont
+  textOutline: SkPaint
+  textFill: [SkPaint, SkPaint]
+  /** Ancho de cada cartel, para centrarlo. */
+  textWidth: [number, number]
 }
+
+const LABELS: [string, string] = ['GOOD', 'PERFECT']
 
 function fill(color: string): SkPaint {
   const p = Skia.Paint()
@@ -92,21 +122,6 @@ function drawGoal(canvas: SkCanvas, st: StagePalette): void {
   const barY = FIELD.GROUND_Y - GOAL.HEIGHT
   const backY = barY - GOAL.ROOF_RISE
   canvas.drawPath(polygon([0, backY, GOAL.DEPTH, barY, GOAL.DEPTH, FIELD.GROUND_Y, 0, FIELD.GROUND_Y]), fill(st.cabinet))
-
-  // Dos conos de altavoz al fondo: la portería es una caja de bafle abierta.
-  const cone = fill(st.cone)
-  const ring = stroke(st.coneRing, 2.5)
-  const dome = fill(st.coneRing)
-  const cx = GOAL.DEPTH * 0.46
-  for (const [cy, r] of [
-    [barY + 46, 24],
-    [barY + 108, 29],
-  ]) {
-    canvas.drawCircle(cx, cy, r, cone)
-    canvas.drawCircle(cx, cy, r, ring)
-    canvas.drawCircle(cx, cy, r * 0.62, ring)
-    canvas.drawCircle(cx, cy, r * 0.26, dome)
-  }
 
   // El techo se pinta con el mismo grosor con el que choca: lo que se ve es
   // exactamente contra lo que rebota el vinilo.
@@ -192,6 +207,8 @@ export function createPainter(sw: number, sh: number, insetX: number, st: StageP
   shadow.setAlphaf(0.35)
   const vinylShine = stroke('#ffffff', 2.5)
   vinylShine.setAlphaf(0.35)
+  const font = matchFont({ fontFamily: 'sans-serif', fontSize: 26, fontWeight: '900', fontStyle: 'italic' })
+  const textOutline = stroke(st.outline, 5)
 
   return {
     view,
@@ -226,6 +243,17 @@ export function createPainter(sw: number, sh: number, insetX: number, st: StageP
       // Una bota de perfil.
       kick: polygon([-0.3, -0.42, 0.02, -0.42, 0.02, 0.04, 0.42, 0.18, 0.42, 0.4, -0.3, 0.4], controls.kick, r),
     },
+    cone: fill(st.cone),
+    coneRing: stroke(st.coneRing, 2.5),
+    coneDome: fill(st.coneRing),
+    floorPulse: fill(st.beatGlow),
+    beatRing: stroke(st.beatGlow, 3),
+    beatFlash: stroke('#ffffff', 4),
+    burst: stroke(st.perfect, 4),
+    font,
+    textOutline,
+    textFill: [fill(st.good), fill(st.perfect)],
+    textWidth: [font.measureText(LABELS[0]).width, font.measureText(LABELS[1]).width],
   }
 }
 
@@ -328,6 +356,66 @@ function drawVinyl(canvas: SkCanvas, k: Painter, x: number, y: number, angle: nu
   canvas.restore()
 }
 
+/** Los conos de los bafles-portería, que se hinchan con cada bombo. */
+function drawCones(canvas: SkCanvas, k: Painter, pulse: number): void {
+  'worklet'
+  const barY = FIELD.GROUND_Y - GOAL.HEIGHT
+  const grow = 1 + pulse * 0.14
+  for (let side = 0; side < 2; side++) {
+    const cx = side === 0 ? GOAL.DEPTH * 0.46 : FIELD.W - GOAL.DEPTH * 0.46
+    for (let i = 0; i < 2; i++) {
+      const cy = barY + (i === 0 ? 46 : 108)
+      const r = (i === 0 ? 24 : 29) * grow
+      canvas.drawCircle(cx, cy, r, k.cone)
+      canvas.drawCircle(cx, cy, r, k.coneRing)
+      canvas.drawCircle(cx, cy, r * 0.62, k.coneRing)
+      canvas.drawCircle(cx, cy, r * 0.26 * (1 + pulse * 0.5), k.coneDome)
+    }
+  }
+}
+
+/**
+ * El anillo que se cierra sobre tu jugador: llega a la cabeza justo en el
+ * beat. Es la señal para rematar a tiempo sin apartar la vista del muñeco.
+ */
+function drawBeatRing(canvas: SkCanvas, k: Painter, x: number, y: number, phase: number, pulse: number): void {
+  'worklet'
+  const cy = y - PLAYER.HEAD_CY
+  const edge = PLAYER.HEAD_R + 5
+  k.beatRing.setAlphaf(0.15 + 0.65 * phase)
+  canvas.drawCircle(x, cy, edge + 46 * (1 - phase), k.beatRing)
+  if (pulse > 0.05) {
+    k.beatFlash.setAlphaf(pulse)
+    canvas.drawCircle(x, cy, edge, k.beatFlash)
+  }
+}
+
+function drawFx(canvas: SkCanvas, k: Painter, fx: Fx): void {
+  'worklet'
+  const t = fx.age / FX_LIFE
+  const fade = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4
+  const i = fx.judge === 2 ? 1 : 0
+
+  if (fx.judge === 2) {
+    k.burst.setAlphaf(1 - t)
+    canvas.drawCircle(fx.x, fx.y, BALL.R + 70 * t, k.burst)
+  }
+  // Sale un poco grande y se asienta: se nota más que si apareciera ya quieto.
+  const pop = 1 + 0.5 * Math.max(0, 1 - fx.age / 0.12)
+  // Los carteles no se salen del campo aunque el toque sea pegado a una pared.
+  const half = (k.textWidth[i] * pop) / 2
+  const x = Math.min(Math.max(fx.x, half + 8), FIELD.W - half - 8)
+  const y = Math.max(fx.y - 44 - 46 * t, 34)
+  canvas.save()
+  canvas.translate(x, y)
+  canvas.scale(pop, pop)
+  k.textOutline.setAlphaf(fade)
+  k.textFill[i].setAlphaf(fade)
+  canvas.drawText(LABELS[i], -k.textWidth[i] / 2, 0, k.textOutline, k.font)
+  canvas.drawText(LABELS[i], -k.textWidth[i] / 2, 0, k.textFill[i], k.font)
+  canvas.restore()
+}
+
 function drawButton(canvas: SkCanvas, k: Painter, at: Point, icon: SkPath, pressed: boolean): void {
   'worklet'
   canvas.drawCircle(at.x, at.y, k.controls.r, pressed ? k.buttonOn : k.button)
@@ -335,10 +423,25 @@ function drawButton(canvas: SkCanvas, k: Painter, at: Point, icon: SkPath, press
   canvas.drawPath(icon, k.icon)
 }
 
-export function drawFrame(canvas: SkCanvas, s: GameState, k: Painter, touch: InputFrame, showControls: boolean): void {
+export function drawFrame(
+  canvas: SkCanvas,
+  s: GameState,
+  k: Painter,
+  touch: InputFrame,
+  showControls: boolean,
+  beat: BeatView,
+): void {
   'worklet'
   const v = k.view
   canvas.drawPicture(k.background)
+
+  // Un destello que nace en cada beat y se apaga enseguida.
+  const pulse = beat.phase >= 0 ? Math.exp(-beat.phase * 6) : 0
+  if (pulse > 0.02) {
+    const groundY = v.oy + FIELD.GROUND_Y * v.scale
+    k.floorPulse.setAlphaf(pulse)
+    canvas.drawRect({ x: 0, y: groundY - pulse * 3, width: v.sw, height: 3 + pulse * 6 }, k.floorPulse)
+  }
 
   // La simulación va a pasos fijos y casi nunca coincide con el instante del
   // frame. Se pinta «un poco por delante», lo que quede sin simular: sin esto
@@ -352,15 +455,22 @@ export function drawFrame(canvas: SkCanvas, s: GameState, k: Painter, touch: Inp
   canvas.translate(v.ox, v.oy)
   canvas.scale(v.scale, v.scale)
 
+  drawCones(canvas, k, pulse)
+
   for (let i = 0; i < 2; i++) {
     const p = s.players[i]
     drawShadow(canvas, k, p.x + p.vx * ahead, p.y, 32)
+  }
+  if (beat.phase >= 0 && s.phase !== 'ended') {
+    const me = s.players[0]
+    drawBeatRing(canvas, k, me.x + me.vx * ahead, Math.min(me.y + me.vy * ahead, FIELD.GROUND_Y), beat.phase, pulse)
   }
   drawShadow(canvas, k, bx, by + BALL.R, 20)
 
   drawPlayer(canvas, k, s.players[1], ahead, bx, by)
   drawPlayer(canvas, k, s.players[0], ahead, bx, by)
   drawVinyl(canvas, k, bx, by, b.angle + b.spin * ahead)
+  for (let i = 0; i < beat.fx.length; i++) drawFx(canvas, k, beat.fx[i])
 
   canvas.restore()
 

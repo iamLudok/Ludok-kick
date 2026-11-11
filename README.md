@@ -14,14 +14,14 @@ siguiente.
 | Fase | Qué trae | Estado |
 |---|---|---|
 | 1 | Prototipo de física: campo, dos jugadores (el rival quieto), vinilo, porterías, goles, marcador y reloj | Hecha |
-| 2 | Motor de beat: música sintetizada, remate al ritmo (PERFECT / GOOD), calibración de latencia | Pendiente |
+| 2 | Motor de beat: música sintetizada, remate al ritmo (PERFECT / GOOD), calibración de latencia, ajustes y copia de seguridad | Hecha |
 | 3 | IA con tres niveles | Pendiente |
 | 4 | Drops en los goles y BPM que sube con el partido | Pendiente |
 | 5 | Poderes de DJ y barra de energía | Pendiente |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Pendiente |
 | 7 | Pulido: partículas, sacudida de cámara, icono y splash | Pendiente |
 
-## Cómo se juega (fase 1)
+## Cómo se juega
 
 - **Mitad izquierda de la pantalla**: moverse. No hace falta acertar en las flechas; cuenta
   cualquier toque, y se puede deslizar de un lado a otro sin levantar el dedo.
@@ -29,7 +29,37 @@ siguiente.
 - El cabezazo sale solo al chocar con la cabeza.
 - Con el botón de chutar, el momento importa: si el pie pilla el vinilo al principio del
   barrido sale raso y rápido; si lo pilla al final, bombeado.
+- **Rematar al ritmo**: cada toque al vinilo (pie o cabeza) se mide contra el bombo más
+  cercano. A menos de 80 ms es PERFECT y el tiro sale un 35 % más fuerte; a menos de 160 ms
+  es GOOD, un 15 % más. El anillo que se cierra sobre tu jugador llega a la cabeza justo en el
+  beat, y el suelo y los bafles laten con él.
 - Empate al acabar el tiempo: gol de oro.
+
+## Lo que manda: que el ritmo sea justo
+
+Un juego que premia rematar a tiempo solo es justo si «a tiempo» significa lo mismo para el
+juego que para tu oído. Tres decisiones lo sostienen:
+
+- **El reloj de audio es la única fuente de verdad del beat.** La música no se dispara con
+  temporizadores de JavaScript: cada nota se programa con antelación para un instante exacto
+  del reloj de audio, y el juego pregunta la hora a ese mismo reloj. Si la app da un tirón, la
+  música no se entera y el juicio tampoco.
+- **Se juzga lo que oyes, no lo que el móvil manda al altavoz.** Entre una cosa y otra pasan
+  unas decenas de milisegundos con el altavoz del móvil y hasta 300 con auriculares Bluetooth.
+  Ese desfase se resta antes de juzgar y antes de pintar el anillo.
+- **El desfase se puede calibrar** en Ajustes, tocando al ritmo de un metrónomo. Sin
+  calibrar se usa el que el propio móvil dice tener. Con Bluetooth, calibrar es
+  imprescindible; aun así, el *sonido* del golpe se oirá tarde, y eso no tiene arreglo.
+
+## Tus datos
+
+Sin cuentas ni servidores. Los ajustes y el historial de partidos se guardan en una base
+SQLite dentro del almacenamiento privado de la app. Desde Ajustes se exporta todo a un
+fichero JSON con el menú de compartir del sistema, y se importa de vuelta.
+
+La calibración de audio no viaja en la copia: es una medida de un móvil concreto con unos
+auriculares concretos, y restaurada en otro aparato haría injustos todos los remates sin que
+se notara por qué.
 
 ## Arranque
 
@@ -38,7 +68,7 @@ npm install
 npm run android     # compila la versión de desarrollo y la abre en el móvil conectado por adb
 ```
 
-Hace falta **development build**: Skia y el resto de módulos nativos no van en Expo Go.
+Hace falta **development build**: Skia, el audio y el resto de módulos nativos no van en Expo Go.
 
 Requisitos: JDK 17, Android SDK con API 36 y `adb`.
 
@@ -69,35 +99,52 @@ npm run typecheck
 npm run verify
 ```
 
-`verify/physics.ts` ejecuta en el ordenador **el mismo código de juego que corre en el
-móvil** y comprueba lo que tiene que cumplirse siempre: que el vinilo no se sale del campo ni
-se queda atrapado, que los goles se cuentan en el lado correcto, que el reloj acaba el partido
-o da paso al gol de oro, que ningún lado tiene ventaja y que el resultado es el mismo se pinte
-a 60 o a 120 Hz. No comprueba si es divertido: eso solo se ve jugando.
+Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre en el móvil**:
+
+| Script | Qué comprueba |
+|---|---|
+| `verify/physics.ts` | Que el vinilo no se sale del campo ni se queda atrapado, que los goles se cuentan en el lado correcto, que el reloj acaba el partido o da paso al gol de oro, que ningún lado tiene ventaja y que el resultado es el mismo a 60 que a 120 Hz |
+| `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca y que el tiro sale con la potencia de ese juicio |
+| `verify/data.ts` | Ida y vuelta de la copia de seguridad contra un SQLite de escritorio: que nada se pierde ni se mezcla y que se rechaza lo que hay que rechazar |
+| `verify/library.ts` | Las reglas de ajustes, calibración e historial |
+| `verify/migration.ts` | Que el SQL del esquema y las tablas de Drizzle describen lo mismo |
+
+No comprueban si es divertido ni cómo suena: eso solo se sabe jugando.
 
 ## Ajustar la sensación de juego
 
 Todos los números de jugabilidad están en **`src/game/constants.ts`** y en ningún otro sitio:
 velocidades, gravedad, rebotes, fuerza del chut, tamaño de las porterías, duración del
-partido. Cada uno lleva al lado para qué sirve.
+partido, tempo, ventanas de PERFECT y GOOD y cuánto premian. Cada uno lleva al lado para qué sirve.
 
 Para ver los fps y los milisegundos de trabajo por frame, `DEBUG.OVERLAY` en ese mismo fichero.
 
 ## Estructura
 
 ```
-app/                 Rutas (expo-router). De momento, solo el partido.
+app/                 Rutas (expo-router): menú, partido y ajustes.
 src/game/            El juego en sí. Sin React, sin Skia, sin nada nativo.
   constants.ts       Toda la configuración de jugabilidad.
   types.ts           El estado del partido y el InputFrame.
   state.ts           Estado inicial y saque.
-  step.ts            La simulación: física, goles y reloj.
+  step.ts            La simulación: física, goles, reloj y remate al ritmo.
+  beat.ts            La aritmética del beat (distancia, fase, juicio).
+src/audio/           La música y el reloj. Lo único que importa la librería de audio.
+  engine.ts          El AudioContext y los buses.
+  synth.ts           Los instrumentos y los efectos, sintetizados.
+  patterns.ts        Las bases, como rejillas de 16 pasos.
+  sequencer.ts       Programa las notas con antelación en el reloj de audio.
+  clock.ts           El reloj de audio leído desde el hilo del juego.
+  useAudioSession.ts Enciende y apaga todo con la pantalla y con la app.
 src/render/          Cómo se ve. Todo pintado por código con Skia.
   draw.ts            Una función por cosa que se pinta (jugador, vinilo, botones…).
   stage.ts           La paleta del escenario.
   view.ts            Cómo encaja el campo en la pantalla y dónde van los botones.
+src/lib/             Los datos: esquema, ajustes, historial y copias.
+  db.ts              El único fichero que importa expo-sqlite.
+  dbRef.ts           Por aquí pide la base todo lo demás (y por eso se puede probar en Node).
 src/ui/              Pantallas, marcador, controles táctiles y tokens de la interfaz.
-verify/              Pruebas del núcleo, ejecutadas en Node.
+verify/              Pruebas del núcleo y de los datos, ejecutadas en Node.
 scripts/build-apk.sh Compila y firma el APK.
 ```
 

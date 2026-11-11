@@ -1,4 +1,4 @@
-import { BALL, FIELD, MATCH, PLAYER } from './constants'
+import { BALL, BEAT, FIELD, MATCH, PLAYER } from './constants'
 import type { GameState, InputFrame, PlayerState, PlayerStats, Side } from './types'
 
 export const BASE_STATS: PlayerStats = { speed: 1, jump: 1, kick: 1 }
@@ -53,6 +53,7 @@ export function createInitialState(stats0?: PlayerStats, stats1?: PlayerStats): 
     tick: 0,
     events: [],
     contact: { nx: 0, ny: 0, pen: 0 },
+    beat: { on: false, now: 0, t0: 0, bpm: BEAT.BPM },
   }
 }
 

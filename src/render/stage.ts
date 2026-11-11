@@ -26,6 +26,11 @@ export type StagePalette = {
   vinylRim: string
   vinylGroove: string
   vinylLabel: string
+  /** El color con el que late el escenario en cada beat (suelo y anillo). */
+  beatGlow: string
+  /** Carteles de remate a tiempo. */
+  good: string
+  perfect: string
 }
 
 export const PROTOTYPE_STAGE: StagePalette = {
@@ -48,4 +53,7 @@ export const PROTOTYPE_STAGE: StagePalette = {
   vinylRim: '#e7e1f5',
   vinylGroove: '#3a3448',
   vinylLabel: '#ff4f9a',
+  beatGlow: '#c9a8ff',
+  good: '#7ce8ff',
+  perfect: '#ffd84a',
 }

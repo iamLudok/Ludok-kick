@@ -123,6 +123,44 @@ export const KICK = {
   INHERIT: 0.35,
 }
 
+export const BEAT = {
+  /** Tempo de la música. En la fase de drops pasará a subir durante el partido. */
+  BPM: 120,
+  /**
+   * Ventanas del remate al ritmo: distancia máxima, en milisegundos, entre el
+   * toque al vinilo y el beat más cercano.
+   */
+  PERFECT_MS: 80,
+  GOOD_MS: 160,
+  /** Por cuánto se multiplica la velocidad del tiro. */
+  PERFECT_POWER: 1.35,
+  GOOD_POWER: 1.15,
+  /**
+   * Desfase de audio que se usa mientras nadie haya calibrado y el móvil no
+   * diga cuál es el suyo: lo que tarda en oírse un sonido desde que se manda.
+   */
+  DEFAULT_OFFSET_MS: 40,
+  /** Límites del ajuste manual en la pantalla de calibración. */
+  MAX_OFFSET_MS: 500,
+}
+
+export const CALIBRATION = {
+  /**
+   * Tempo del metrónomo de calibrar. Más lento que el del juego a propósito:
+   * unos auriculares Bluetooth pueden retrasar el sonido 300 ms, y a 120 BPM
+   * (un beat cada 500 ms) ya no se sabría si un toque va tarde respecto a un
+   * beat o pronto respecto al siguiente.
+   */
+  BPM: 80,
+  /** Toques necesarios antes de proponer una medida, y cuántos se tienen en cuenta. */
+  MIN_TAPS: 8,
+  TAPS_KEPT: 16,
+  /** Lo máximo que un toque puede adelantarse al sonido y seguir contando para ese beat. */
+  MAX_EARLY_MS: 100,
+  /** Paso de los botones de ajuste fino. */
+  NUDGE_MS: 5,
+}
+
 export const MATCH = {
   /** Duración del partido en segundos. Con empate al final, gol de oro. */
   DURATION: 90,

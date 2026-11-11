@@ -53,11 +53,29 @@ export type BallState = {
   spin: number
 }
 
+/** Cómo de a tiempo fue un toque: 0 normal, 1 GOOD, 2 PERFECT. */
+export type Judge = 0 | 1 | 2
+
 export type GameEvent =
   | { type: 'goal'; side: Side }
-  | { type: 'kick'; side: Side }
-  | { type: 'head'; side: Side }
+  /** Un toque al vinilo, con el pie o con la cabeza, y dónde estaba el vinilo. */
+  | { type: 'kick' | 'head'; side: Side; judge: Judge; x: number; y: number }
   | { type: 'bounce'; speed: number }
+
+/**
+ * El pulso de la música, tal como lo ve la simulación. Los tiempos son del
+ * reloj de audio, en segundos, ya corregidos con el desfase calibrado: «ahora»
+ * es lo que el jugador está oyendo, no lo que el móvil acaba de mandar al
+ * altavoz.
+ */
+export type BeatState = {
+  /** Sin música (o en las pruebas) no hay remate al ritmo. */
+  on: boolean
+  now: number
+  /** Instante de un beat cualquiera; el resto caen cada 60 / bpm segundos. */
+  t0: number
+  bpm: number
+}
 
 /** Resultado de una colisión. Vive en el estado para no crear un objeto por choque. */
 export type Contact = {
@@ -82,4 +100,5 @@ export type GameState = {
   /** Lo ocurrido en el último frame. Se vacía al empezar cada `stepGame`. */
   events: GameEvent[]
   contact: Contact
+  beat: BeatState
 }

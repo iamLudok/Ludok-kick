@@ -9,9 +9,10 @@
  * segundo, crear objetos en cada paso acaba en pausas del recolector de basura,
  * que en un juego se notan como tirones.
  */
+import { beatDelta, judgeDelta, judgePower } from './beat'
 import { BALL, BODY, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, SIM } from './constants'
 import { resetForKickoff } from './state'
-import type { Contact, GameState, InputFrame, PlayerState, Side } from './types'
+import type { Contact, GameState, InputFrame, Judge, PlayerState, Side } from './types'
 
 function clamp(v: number, lo: number, hi: number): number {
   'worklet'
@@ -283,6 +284,14 @@ function ballVsCircle(
   return hard
 }
 
+/** Cómo de a tiempo cae un toque que ocurre en este mismo paso. */
+function judgeTouch(s: GameState): Judge {
+  'worklet'
+  const bt = s.beat
+  if (!bt.on) return 0
+  return judgeDelta(beatDelta(bt.now, bt.t0, bt.bpm))
+}
+
 function ballVsPlayer(s: GameState, p: PlayerState): void {
   'worklet'
   const b = s.ball
@@ -298,11 +307,16 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
     const rr = KICK.FOOT_R + BALL.R
     if (dx * dx + dy * dy < rr * rr) {
       const t = clamp(p.kickT / KICK.DURATION, 0, 1)
-      b.vx = p.facing * KICK.VX * lerp(KICK.FLAT_VX, KICK.LOB_VX, t) * p.stats.kick + p.vx * KICK.INHERIT
-      b.vy = -KICK.VY * lerp(KICK.FLAT_LIFT, KICK.LOB_LIFT, t) * p.stats.kick
+      const judge = judgeTouch(s)
+      const power = p.stats.kick * judgePower(judge)
+      b.vx = p.facing * KICK.VX * lerp(KICK.FLAT_VX, KICK.LOB_VX, t) * power + p.vx * KICK.INHERIT
+      b.vy = -KICK.VY * lerp(KICK.FLAT_LIFT, KICK.LOB_LIFT, t) * power
       b.spin = b.vx / BALL.R
       p.kickHit = true
-      s.events.push({ type: 'kick', side: p.side })
+      // Un chut cuenta también como toque: sin esto, el vinilo recién chutado
+      // rozaba la cabeza en el paso siguiente y se juzgaba dos veces.
+      p.touchCd = 0.15
+      s.events.push({ type: 'kick', side: p.side, judge, x: b.x, y: b.y })
     }
   }
 
@@ -318,7 +332,11 @@ function ballVsPlayer(s: GameState, p: PlayerState): void {
   )
   if (headed && p.touchCd <= 0) {
     p.touchCd = 0.15
-    s.events.push({ type: 'head', side: p.side })
+    const judge = judgeTouch(s)
+    const power = judgePower(judge)
+    b.vx *= power
+    b.vy *= power
+    s.events.push({ type: 'head', side: p.side, judge, x: b.x, y: b.y })
   }
   ballVsCircle(s, p.x, p.y - PLAYER.BODY_R, PLAYER.BODY_R, p.vx, p.vy, BODY.RESTITUTION, 0)
 }
@@ -469,15 +487,35 @@ function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number): void 
   else resetForKickoff(s)
 }
 
+/** El pulso de la música en el instante en que acaba este frame. */
+export type BeatInput = {
+  time: number
+  t0: number
+  bpm: number
+}
+
 /**
  * Avanza el partido `frameDt` segundos de reloj, en pasos fijos de SIM.DT. Lo
  * que sobra se guarda en `s.acc` para el frame siguiente.
+ *
+ * `beat` es opcional: sin él se juega igual, solo que ningún toque cuenta como
+ * dado a tiempo.
  */
-export function stepGame(s: GameState, in0: InputFrame, in1: InputFrame, frameDt: number): void {
+export function stepGame(s: GameState, in0: InputFrame, in1: InputFrame, frameDt: number, beat?: BeatInput): void {
   'worklet'
   s.events.length = 0
   s.acc += Math.min(frameDt, SIM.MAX_STEPS * SIM.DT)
+  const bt = s.beat
+  bt.on = beat !== undefined
+  if (beat) {
+    bt.t0 = beat.t0
+    bt.bpm = beat.bpm
+  }
   while (s.acc >= SIM.DT) {
+    // Cada paso ocurre un poco antes del final del frame: lo que quede por
+    // simular después de él. Así un toque se juzga en su instante y no en el
+    // del frame, que a 60 Hz podía caer hasta 16 ms más tarde.
+    if (beat) bt.now = beat.time - (s.acc - SIM.DT)
     tick(s, in0, in1, SIM.DT)
     s.acc -= SIM.DT
   }

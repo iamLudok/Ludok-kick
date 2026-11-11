@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.ludok.kick",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#7A45C4",
         "foregroundImage": "./assets/android-icon-foreground.png"
@@ -35,6 +35,16 @@
           "image": "./assets/splash-icon.png",
           "backgroundColor": "#0a0a0c",
           "imageWidth": 160
+        }
+      ],
+      "expo-sqlite",
+      "expo-sharing",
+      [
+        "react-native-audio-api",
+        {
+          "iosBackgroundMode": false,
+          "androidPermissions": [],
+          "androidForegroundService": false
         }
       ]
     ]
