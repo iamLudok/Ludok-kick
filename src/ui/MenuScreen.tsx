@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DJS } from '../content/djs'
-import { useLevelTallies } from '../hooks/useHistory'
+import { useLevelTallies, useUnlocks } from '../hooks/useHistory'
 import { useSettings } from '../hooks/useSettings'
 import { LEVELS } from '../types'
 import { DjPortrait } from './Art'
@@ -15,6 +15,9 @@ export function MenuScreen() {
   const insets = useSafeAreaInsets()
   const { data: settings, ready } = useSettings()
   const { data: tallies, ready: talliesReady } = useLevelTallies()
+  const { unlocked } = useUnlocks()
+  // Seis caras: primero los DJs que ya tienes y luego siluetas de los que faltan.
+  const crew = [...DJS.filter((d) => unlocked.has(d.id)), ...DJS.filter((d) => !unlocked.has(d.id))].slice(0, 6)
 
   const total = LEVELS.reduce(
     (acc, l) => ({
@@ -45,6 +48,7 @@ export function MenuScreen() {
         </Txt>
         <View style={styles.buttons}>
           <Button title="Jugar" onPress={() => router.push('/elegir')} />
+          <Button title="Misiones" kind="secondary" onPress={() => router.push('/misiones')} />
           <Button title="Ajustes" kind="secondary" onPress={() => router.push('/ajustes')} />
         </View>
         <Txt variant="data" tone="muted">
@@ -61,14 +65,17 @@ export function MenuScreen() {
       </View>
 
       <View style={styles.crew}>
-        {DJS.map((dj) => (
-          <View key={dj.id} style={styles.member}>
-            <DjPortrait dj={dj} size={84} />
-            <Txt variant="label" style={{ color: dj.look.jersey }}>
-              {dj.name}
-            </Txt>
-          </View>
-        ))}
+        {crew.map((dj) => {
+          const locked = !unlocked.has(dj.id)
+          return (
+            <View key={dj.id} style={styles.member}>
+              <DjPortrait dj={dj} size={72} locked={locked} />
+              <Txt variant="label" style={{ color: locked ? palette.muted : dj.look.jersey }} numberOfLines={1}>
+                {locked ? '???' : dj.name}
+              </Txt>
+            </View>
+          )
+        })}
       </View>
     </View>
   )
@@ -79,6 +86,12 @@ const styles = StyleSheet.create({
   left: { flex: 1, gap: space.md },
   title: { flexDirection: 'row' },
   buttons: { flexDirection: 'row', gap: space.md, marginVertical: space.sm },
-  crew: { flexDirection: 'row', flexWrap: 'wrap', width: 2 * 104 + space.lg, gap: space.lg, justifyContent: 'center' },
-  member: { width: 104, alignItems: 'center', gap: space.xs },
+  crew: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: 3 * 96 + 2 * space.md,
+    gap: space.md,
+    justifyContent: 'center',
+  },
+  member: { width: 96, alignItems: 'center', gap: space.xs },
 })

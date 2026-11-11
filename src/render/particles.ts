@@ -1,13 +1,14 @@
 /**
- * Partículas: chispas en los PERFECT, confeti en los goles, una lluvia de
- * chispas en el drop. Son solo adorno; el juego no las ve.
+ * Partículas: chispas en los PERFECT y una lluvia de chispas en el drop. Son
+ * solo adorno; el juego no las ve. (Hubo confeti en los goles y se quitó: con
+ * la onda del drop encima, recargaba más que lucía.)
  *
  * Hay un número fijo de ellas, creadas una vez, que se reciclan: crear objetos
  * nuevos en cada gol acabaría en pausas del recolector de basura justo en el
  * momento más vistoso. Si se acaban, la siguiente pisa a la más vieja.
  */
 import type { SkCanvas, SkPaint } from '@shopify/react-native-skia'
-import { FIELD, GOAL } from '../game/constants'
+import { FIELD } from '../game/constants'
 
 export type Particle = {
   x: number
@@ -91,26 +92,6 @@ export function burst(pool: ParticlePool, x: number, y: number, n: number, speed
       3 + rnd(pool) * 2,
       0,
     )
-  }
-}
-
-/**
- * Confeti saliendo de la portería donde entró el gol, hacia el campo. `side`
- * es quien marcó: el confeti es de su color, con algo de dorado y blanco.
- */
-export function confetti(pool: ParticlePool, side: number, n: number): void {
-  'worklet'
-  // Marca 0 en la portería derecha y 1 en la izquierda.
-  const goalX = side === 0 ? FIELD.W - GOAL.DEPTH * 0.5 : GOAL.DEPTH * 0.5
-  const dir = side === 0 ? -1 : 1
-  const y = FIELD.GROUND_Y - GOAL.HEIGHT * 0.5
-  const own = side === 0 ? PC.P0 : PC.P1
-  for (let i = 0; i < n; i++) {
-    const r = rnd(pool)
-    const color = r < 0.55 ? own : r < 0.8 ? PC.PERFECT : r < 0.92 ? PC.WHITE : PC.POWER
-    const vx = dir * (180 + rnd(pool) * 520)
-    const vy = -(260 + rnd(pool) * 520)
-    emit(pool, goalX, y + (rnd(pool) - 0.5) * 80, vx, vy, 1.2 + rnd(pool) * 0.9, color, 6 + rnd(pool) * 5, 1)
   }
 }
 

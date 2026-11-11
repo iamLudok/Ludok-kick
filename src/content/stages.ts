@@ -1,12 +1,8 @@
 /**
- * Los escenarios: dónde se juega, cómo se ve y qué suena. Cada uno tiene su
- * paleta, su decorado (dibujado en `src/render/decor.ts`) y su base.
- *
- * Las bases son rejillas de 16 pasos por compás. El bombo va SIEMPRE en las
- * cuatro negras (0, 4, 8, 12): son los beats contra los que se juzga el
- * remate, y `verify/sequencer.ts` comprueba que ningún escenario lo cambie.
+ * Los escenarios: dónde se juega y cómo se ve. Cada uno tiene su paleta y su
+ * decorado (dibujado en `src/render/decor.ts`). La música no es del
+ * escenario sino del DJ (ver `genres.ts`).
  */
-import type { Pattern } from '../audio/patterns'
 import type { StageDecor, StagePalette } from '../render/stage'
 
 export type StageId = 'bilbao' | 'donostia' | 'caserio'
@@ -17,7 +13,6 @@ export type Stage = {
   place: string
   decor: StageDecor
   palette: StagePalette
-  pattern: Pattern
 }
 
 /** Colores comunes a todos los escenarios: los del vinilo, los carteles y los poderes. */
@@ -55,26 +50,6 @@ export const STAGES: Stage[] = [
       beatGlow: '#ffb067',
       deco: ['#2a3342', '#ff9a3c', '#141922', '#7a5038'],
     },
-    // Techno industrial: bajo rodante a contratiempo y golpes de metal.
-    pattern: {
-      kick: [0, 4, 8, 12],
-      hat: [2, 6, 10, 14],
-      hat16: [1, 3, 5, 7, 9, 11, 13, 15],
-      openHat: [],
-      clap: [12],
-      bass: { 2: 0, 3: 0, 6: 0, 7: 0, 10: 0, 11: 0, 14: 0, 15: 1 },
-      stab: [10],
-      perc: [7, 15],
-      percVoice: 'metal',
-      bassWave: 'sawtooth',
-      chords: [
-        { root: -5, notes: [19, 22, 26] },
-        { root: -5, notes: [19, 22, 26] },
-        { root: -7, notes: [17, 20, 24] },
-        { root: -4, notes: [20, 23, 27] },
-      ],
-      enter: { perc: 2, bass: 4, clap: 6, hat16: 8, stab: 12 },
-    },
   },
   {
     id: 'donostia',
@@ -99,26 +74,6 @@ export const STAGES: Stage[] = [
       beatGlow: '#ffe08a',
       deco: ['#ffe08a', '#1f7f93', '#7fe6dc', '#3b2346'],
     },
-    // House melódico: platos con aire, palmas, bajo con groove y acordes cálidos.
-    pattern: {
-      kick: [0, 4, 8, 12],
-      hat: [2, 6, 10, 14],
-      hat16: [3, 7, 11, 15],
-      openHat: [14],
-      clap: [4, 12],
-      bass: { 3: 0, 6: 7, 7: 0, 10: 12, 11: 0, 14: 7 },
-      stab: [2, 7, 10],
-      perc: [],
-      percVoice: 'wood',
-      bassWave: 'square',
-      chords: [
-        { root: -4, notes: [20, 24, 27, 31] },
-        { root: -2, notes: [22, 26, 29, 33] },
-        { root: 0, notes: [24, 27, 31, 34] },
-        { root: -5, notes: [19, 22, 26, 29] },
-      ],
-      enter: { clap: 2, bass: 4, stab: 6, hat16: 8, perc: 999 },
-    },
   },
   {
     id: 'caserio',
@@ -142,26 +97,6 @@ export const STAGES: Stage[] = [
       vinylLabel: '#5fffb0',
       beatGlow: '#5fffb0',
       deco: ['#3a3029', '#5a3a22', '#2a1a0f', '#ff3fb4'],
-    },
-    // Rave: bajo a contratiempo con octavas, platos abiertos y madera a lo txalaparta.
-    pattern: {
-      kick: [0, 4, 8, 12],
-      hat: [2, 6, 10, 14],
-      hat16: [1, 5, 9, 13],
-      openHat: [2, 6, 10, 14],
-      clap: [4, 12],
-      bass: { 2: 0, 3: 12, 6: 0, 7: 12, 10: 0, 11: 12, 14: 0, 15: 12 },
-      stab: [0, 3, 6, 10],
-      perc: [1, 3, 6, 9, 11, 14],
-      percVoice: 'wood',
-      bassWave: 'sawtooth',
-      chords: [
-        { root: 0, notes: [24, 27, 31] },
-        { root: -2, notes: [22, 26, 29] },
-        { root: -4, notes: [20, 24, 27] },
-        { root: -5, notes: [19, 22, 26] },
-      ],
-      enter: { perc: 1, clap: 2, bass: 4, hat16: 8, stab: 8 },
     },
   },
 ]

@@ -16,10 +16,11 @@ siguiente.
 | 1 | Prototipo de física: campo, dos jugadores (el rival quieto), vinilo, porterías, goles, marcador y reloj | Hecha |
 | 2 | Motor de beat: música sintetizada, remate al ritmo (PERFECT / GOOD), calibración de latencia, ajustes y copia de seguridad | Hecha |
 | 3 | IA con tres niveles (Warm-up, Peak Time, Closing) e historial de partidos | Hecha |
-| 4 | Drops en los goles y BPM que sube con el partido | Hecha |
+| 4 | Drops en los goles | Hecha |
 | 5 | Poderes de DJ y barra de energía | Hecha |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Hecha |
 | 7 | Pulido: partículas, focos al ritmo, sonidos de interfaz, icono y splash | Hecha |
+| 8 | 14 DJs homenaje con su propia música, y misiones para desbloquearlos | Hecha |
 
 ## Cómo se juega
 
@@ -35,9 +36,9 @@ siguiente.
   cercano. A menos de 80 ms es PERFECT y el tiro sale un 35 % más fuerte; a menos de 160 ms
   es GOOD, un 15 % más. El anillo que se cierra sobre tu jugador llega a la cabeza justo en el
   beat, y el suelo y los bafles laten con él.
-- **El tempo sube**: de 120 BPM al empezar a 145 al acabar. Con él sube la velocidad del juego
-  (al final todo va un 21 % más rápido) y se encogen las ventanas de PERFECT y GOOD, que son
-  siempre la misma fracción del beat. El reloj del partido sigue marcando segundos de verdad.
+- **Cada DJ pone su música**, a su tempo, de 122 a 145 BPM. El tempo no cambia durante el
+  partido ni la velocidad del juego: un techno suena más rápido que un house, pero los muñecos
+  corren igual. Las ventanas de PERFECT y GOOD son siempre la misma fracción del beat.
 - **Cada gol es un drop**: el partido se congela mientras la música se cierra y sube la
   tensión; en el primer beat a partir de unos 0,75 s cae el drop (bombo, bajo e impacto), la
   onda expansiva lanza por los aires al que encajó y tiembla la cámara. Luego se saca.
@@ -45,29 +46,47 @@ siguiente.
 
 ## Los DJs
 
-Cuatro personajes inventados, con un matiz de juego y un poder propio cada uno:
+Catorce caricaturas que homenajean a DJs conocidos, con nombres guiño (no se usan sus nombres
+ni su imagen reales, así que el APK se puede compartir). Cada uno pone su género, tiene un
+pequeño matiz de juego y un poder propio. Se empieza con DJ Ludok; el resto se desbloquea con
+misiones.
 
-| DJ | Estilo | Ventaja | Poder |
-|---|---|---|---|
-| **Burdina** | Hard techno | Tiro un 15 % más fuerte | Scratch |
-| **Txiki** | Minimal | Ventana PERFECT un 25 % más amplia | Loop |
-| **Ilargi** | Trance | Salto un 8 % más alto | Low-pass |
-| **Etxe** | House | Corre un 8 % más rápido | Cue |
+| DJ | Homenaje a | Música | Ventaja | Poder | Se desbloquea… |
+|---|---|---|---|---|---|
+| **DJ Ludok** | la mascota de la casa | House · 124 | — | Scratch | desde el principio |
+| **Karl Box** | Carl Cox | Techno · 130 | Tiro más fuerte | Low-pass | ganando tu primer partido |
+| **Dabid Getta** | David Guetta | EDM · 128 | Salta más | Loop | metiendo 6 PERFECT en un partido |
+| **Daft Funk** | Daft Punk | French house · 124 | PERFECT más amplio | Cue | ganando en Peak Time o Closing |
+| **Deadmouse** | deadmau5 | Progressive · 128 | Más rápido | Scratch | ganando sin encajar |
+| **Marsmelou** | Marshmello | Future bounce · 128 | Salta más | Cue | lanzando 3 poderes en un partido |
+| **Carlota de Whitte** | Charlotte de Witte | Techno oscuro · 136 | Tiro más fuerte | Loop | ganando en los 3 escenarios |
+| **Ameli Lenz** | Amelie Lens | Techno · 140 | Más rápido | Low-pass | ganando con gol de oro |
+| **Arnim Ban Buren** | Armin van Buuren | Trance · 138 | Salta más | Scratch | encadenando 5 PERFECT |
+| **Ritxie Hautin** | Richie Hawtin | Minimal · 125 | PERFECT más amplio | Loop | ganando 3 partidos seguidos |
+| **Solomoon** | Solomun | Melodic techno · 122 | PERFECT más amplio | Low-pass | ganando en Closing |
+| **Klaptone** | Claptone | Deep house · 122 | Más rápido | Cue | con 10 victorias |
+| **Boris Brejtxa** | Boris Brejcha | High-tech minimal · 126 | PERFECT y tiro | Scratch | ganando en Closing por 3 goles |
+| **I Hate Modems** | I Hate Models | Techno industrial · 145 | Tiro y velocidad | Low-pass | completando todas las demás |
 
-Se distinguen por la silueta (rapado con gafas de sol, gorro de lana con gafas redondas,
-melena con cinta, pelo rizado) y no solo por el color. El rival es otro DJ al azar. Para que el
-poder salga al azar en vez de ser el del DJ, `POWER.SIGNATURE` en `src/game/constants.ts`.
+Las misiones no se guardan aparte: se calculan a partir del historial de partidos. Así no hay
+dos cosas que puedan descuadrarse, y la copia de seguridad se lleva también el progreso. Los
+DJs bloqueados salen en silueta en la selección y en **Misiones**, y sí aparecen como rivales:
+así se les conoce antes de ganarlos.
+
+Nombres, colores, ventajas y géneros están en `src/content/djs.ts`; las bases, en
+`src/content/genres.ts`; las misiones, en `src/content/missions.ts`. Para que el poder salga al
+azar en vez de ser el del DJ, `POWER.SIGNATURE` en `src/game/constants.ts`.
 
 ## Los escenarios
 
-| Escenario | Cómo se ve | Qué suena |
-|---|---|---|
-| **Warehouse, Bilbao** | Nave industrial: ventanales, pilares de acero, luz de sodio | Techno industrial: bajo rodante y golpes de metal |
-| **Atardecer, Donostia** | La bahía al atardecer: el sol sobre el mar, la isla, los montes | House melódico: acordes cálidos y bajo con groove |
-| **Caserío rave** | Muro de piedra, cercha de madera y guirnaldas de bombillas | Rave: bajo a contratiempo y madera a lo txalaparta |
+| Escenario | Cómo se ve |
+|---|---|
+| **Warehouse, Bilbao** | Nave industrial: ventanales, pilares de acero, luz de sodio |
+| **Atardecer, Donostia** | La bahía al atardecer: el sol sobre el mar, la isla, los montes |
+| **Caserío rave** | Muro de piedra, cercha de madera y guirnaldas de bombillas |
 
-Todo está dibujado y sintetizado por código. En todos, el bombo va en las cuatro negras: son
-los beats contra los que se juzga el remate.
+El escenario es solo cómo se ve: la música la pone tu DJ. Todo está dibujado y sintetizado por
+código.
 
 ## Poderes de DJ
 
@@ -108,8 +127,8 @@ juego que para tu oído. Tres decisiones lo sostienen:
   del reloj de audio, y el juego pregunta la hora a ese mismo reloj. Si la app da un tirón, la
   música no se entera y el juicio tampoco.
 - **El tempo lo decide la música y el juego lo obedece.** Cada compás empieza en un beat y
-  lleva su tempo; el juego cuenta los beats desde el compás que suena y de ahí saca su
-  velocidad y sus ventanas. Durante la subida de un drop el tempo no se mueve, para que el
+  lleva su tempo; el juego cuenta los beats desde el compás que suena y de ahí saca sus
+  ventanas. Durante la subida de un drop el tempo no se mueve, para que el
   drop caiga exactamente en el beat que se anunció.
 - **Se juzga lo que oyes, no lo que el móvil manda al altavoz.** Entre una cosa y otra pasan
   unas decenas de milisegundos con el altavoz del móvil y hasta 300 con auriculares Bluetooth.
@@ -174,6 +193,7 @@ Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre e
 | `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca, que el tiro sale con su potencia, que el tempo sube y encoge las ventanas, y que el drop cae cuando dice la música |
 | `verify/powers.ts` | La barra de energía (solo la llenan los PERFECT) y cada poder: que se lanza una vez por pulsación, que el Scratch hunde el tiro, que el Low-pass ralentiza solo al rival y se pasa, que el Loop deja el vinilo a tiro y se rompe al tocarlo, y que el Cue te devuelve a tu sitio |
 | `verify/characters.ts` | Que cada DJ tiene su ventaja y su poder, que ninguno gana o pierde casi siempre (la IA contra sí misma con cada pareja de DJs), que todas las bases dejan el bombo en las negras y que lo que llega por la ruta se lee bien aunque venga roto |
+| `verify/missions.ts` | Cada misión contra historiales inventados: que se cumple justo cuando debe y no antes, que el orden de los partidos solo importa donde tiene que importar, y que un partido puede desbloquear varios DJs a la vez |
 | `verify/sequencer.ts` | La música, con un motor de audio de mentira que apunta qué se programa: bombos en los beats, tempo que cambia solo entre compases, drop en un beat y sin bombo ni bajo durante la subida |
 | `verify/ai.ts` | Enfrenta los niveles entre sí y contra un rival quieto: que están ordenados, que los altos rematan más al ritmo, que nunca se atascan y que no se meten goles en propia |
 | `verify/data.ts` | Ida y vuelta de la copia de seguridad contra un SQLite de escritorio: que nada se pierde ni se mezcla y que se rechaza lo que hay que rechazar |
@@ -195,7 +215,7 @@ Mostrar rendimiento**.
 ## Estructura
 
 ```
-app/                 Rutas (expo-router): menú, elegir, partido, resultado y ajustes.
+app/                 Rutas (expo-router): menú, elegir, partido, resultado, misiones y ajustes.
 src/game/            El juego en sí. Sin React, sin Skia, sin nada nativo.
   constants.ts       Toda la configuración de jugabilidad.
   types.ts           El estado del partido y el InputFrame.
@@ -212,7 +232,9 @@ src/audio/           La música y el reloj. Lo único que importa la librería d
   clock.ts           El reloj de audio leído desde el hilo del juego.
   useAudioSession.ts Enciende y apaga todo con la pantalla y con la app.
 src/content/         Los DJs y los escenarios: nombres, ventajas, colores, decorado y música.
-  djs.ts             Los cuatro DJs.
+  djs.ts             Los catorce DJs.
+  genres.ts          La música de cada DJ, con su tempo.
+  missions.ts        Las misiones que desbloquean DJs.
   stages.ts          Los tres escenarios.
   setup.ts           Lo que define un partido, de ida y vuelta por la ruta.
 src/render/          Cómo se ve. Todo pintado por código con Skia.

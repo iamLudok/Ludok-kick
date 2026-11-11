@@ -145,8 +145,6 @@ export type GameState = {
   events: GameEvent[]
   contact: Contact
   beat: BeatState
-  /** Velocidad del juego respecto a BPM_START: sube con el tempo. */
-  speed: number
   /** Quién marcó el último gol, para la onda del drop. */
   scorer: Side
   /** Semilla del azar del partido (qué poder toca). Con la misma, el mismo partido. */

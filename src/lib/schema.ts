@@ -12,6 +12,8 @@ export const matches = sqliteTable('matches', {
   goldenGoal: integer('goldenGoal', { mode: 'boolean' }).notNull().default(false),
   perfects: integer('perfects').notNull().default(0),
   goods: integer('goods').notNull().default(0),
+  powers: integer('powers'),
+  bestStreak: integer('bestStreak'),
   level: text('level').$type<Level>(),
   dj: text('dj'),
   rivalDj: text('rivalDj'),

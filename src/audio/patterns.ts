@@ -27,13 +27,20 @@ export type Pattern = {
   percVoice: 'metal' | 'wood'
   /** Timbre del bajo: sierra (más áspero) o cuadrada (más hueco). */
   bassWave: 'sawtooth' | 'square'
+  /** Timbre de los acordes; por defecto, sierra. */
+  stabWave?: 'sawtooth' | 'square' | 'triangle'
+  /**
+   * Arpegio: en qué pasos suena una nota y cuáles, en semitonos sobre la
+   * tónica del acorde (se van recorriendo en orden).
+   */
+  arp?: { steps: number[]; notes: number[]; wave: 'triangle' | 'square' | 'sawtooth' }
   /** Un acorde por compás, en bucle: tónica del bajo y notas del acorde (semitonos desde La 1). */
   chords: { root: number; notes: number[] }[]
   /**
    * A partir de qué compás entra cada capa. La canción se va montando sola:
    * empieza con bombo y plato, y va sumando.
    */
-  enter: { clap: number; bass: number; hat16: number; stab: number; perc: number }
+  enter: { clap: number; bass: number; hat16: number; stab: number; perc: number; arp?: number }
 }
 
 export const PROTOTYPE_PATTERN: Pattern = {

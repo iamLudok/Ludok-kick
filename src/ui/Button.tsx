@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native'
 import { playUi } from '../audio/ui'
 import type { UiSound } from '../audio/synth'
 import { Txt } from './Text'
@@ -8,7 +8,7 @@ interface Props {
   title: string
   onPress: () => void
   kind?: 'primary' | 'secondary'
-  style?: ViewStyle
+  style?: StyleProp<ViewStyle>
   /** El clic que suena al pulsar. «back» para volver atrás. */
   sound?: UiSound
 }

@@ -59,8 +59,7 @@ export function createInitialState(stats0?: PlayerStats, stats1?: PlayerStats, s
     tick: 0,
     events: [],
     contact: { nx: 0, ny: 0, pen: 0 },
-    beat: { on: false, now: 0, t0: 0, bpm: BEAT.BPM_START, dropAt: -1 },
-    speed: 1,
+    beat: { on: false, now: 0, t0: 0, bpm: BEAT.REFERENCE_BPM, dropAt: -1 },
     scorer: 0,
     seed: seed | 0,
   }

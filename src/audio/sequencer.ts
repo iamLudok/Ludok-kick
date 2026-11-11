@@ -1,7 +1,7 @@
 import type { Bar } from '../game/types'
 import type { Engine } from './engine'
 import { note, type Pattern } from './patterns'
-import { bass, clap, hat, impact, kick, metal, riser, stab, wood } from './synth'
+import { bass, clap, hat, impact, kick, metal, pluck, riser, stab, wood } from './synth'
 
 /** Cada cuánto se despierta el secuenciador y con cuánta antelación programa. */
 const TICK_MS = 25
@@ -94,7 +94,7 @@ export function startSequencer(e: Engine, pattern: Pattern, opts: Options): Sequ
   const playStep = (t: number) => {
     const p = pattern
     const chord = p.chords[bar % p.chords.length]
-    const on = (layer: keyof Pattern['enter']) => full || bar >= p.enter[layer]
+    const on = (layer: keyof Pattern['enter']) => full || bar >= (p.enter[layer] ?? 0)
     const building = buildFrom >= 0 && t >= buildFrom - 1e-6 && (dropAt < 0 || t < dropAt - 1e-6)
 
     if (p.kick.includes(step) && !building) kick(kickVoice, t)
@@ -110,7 +110,13 @@ export function startSequencer(e: Engine, pattern: Pattern, opts: Options): Sequ
       else metal(voices, t)
     }
     if (on('stab') && p.stab.includes(step) && chord.notes.length > 0) {
-      stab(voices, t, chord.notes.map(note), stepDur * 3)
+      stab(voices, t, chord.notes.map(note), stepDur * 3, 0.09, p.stabWave)
+    }
+    if (p.arp && on('arp') && p.arp.steps.includes(step)) {
+      // La nota que toca es la siguiente de la lista, contando desde el
+      // principio del compás: así el arpegio dibuja siempre la misma figura.
+      const i = p.arp.steps.indexOf(step) % p.arp.notes.length
+      pluck(voices, t, note(chord.root + 24 + p.arp.notes[i]), stepDur * 1.6, p.arp.wave)
     }
   }
 

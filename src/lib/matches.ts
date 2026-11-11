@@ -16,6 +16,12 @@ export async function addMatch(match: Omit<MatchRecord, 'id' | 'playedAt'>, play
   return record
 }
 
+/** Todo el historial, sin límite: las misiones se calculan sobre él entero. */
+export async function allMatches(): Promise<MatchRecord[]> {
+  const rows = await getDb().select().from(matchesTable)
+  return rows.map(rowToMatch)
+}
+
 /** Los últimos partidos, del más reciente al más antiguo. */
 export async function listMatches(limit = 50): Promise<MatchRecord[]> {
   const rows = await getDb().select().from(matchesTable).orderBy(desc(matchesTable.playedAt)).limit(limit)

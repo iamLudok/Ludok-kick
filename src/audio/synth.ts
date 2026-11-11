@@ -96,7 +96,33 @@ export function bass(
   osc.stop(t + dur + 0.02)
 }
 
-export function stab(e: Engine, t: number, freqs: number[], dur: number, level = 0.09): void {
+/** Una nota corta de arpegio: ataque seco y caída rápida. */
+export function pluck(e: Engine, t: number, freq: number, dur: number, wave: 'triangle' | 'square' | 'sawtooth', level = 0.1): void {
+  const osc = e.ctx.createOscillator()
+  const lp = e.ctx.createBiquadFilter()
+  const amp = e.ctx.createGain()
+  osc.type = wave
+  osc.frequency.value = freq
+  lp.type = 'lowpass'
+  lp.frequency.setValueAtTime(4200, t)
+  lp.frequency.exponentialRampToValueAtTime(900, t + dur)
+  amp.gain.setValueAtTime(level, t)
+  amp.gain.exponentialRampToValueAtTime(SILENCE, t + dur)
+  osc.connect(lp)
+  lp.connect(amp)
+  amp.connect(e.music)
+  osc.start(t)
+  osc.stop(t + dur + 0.02)
+}
+
+export function stab(
+  e: Engine,
+  t: number,
+  freqs: number[],
+  dur: number,
+  level = 0.09,
+  wave: 'sawtooth' | 'square' | 'triangle' = 'sawtooth',
+): void {
   const lp = e.ctx.createBiquadFilter()
   const amp = e.ctx.createGain()
   lp.type = 'lowpass'
@@ -110,7 +136,7 @@ export function stab(e: Engine, t: number, freqs: number[], dur: number, level =
     // Dos sierras un pelín desafinadas por nota: suena ancho en vez de a pitido.
     for (const detune of [-7, 7]) {
       const osc = e.ctx.createOscillator()
-      osc.type = 'sawtooth'
+      osc.type = wave
       osc.frequency.value = f
       osc.detune.value = detune
       osc.connect(lp)

@@ -21,6 +21,8 @@ export function rowToMatch(r: MatchRow): MatchRecord {
     goldenGoal: r.goldenGoal,
     perfects: r.perfects,
     goods: r.goods,
+    powers: u(r.powers),
+    bestStreak: u(r.bestStreak),
     level: u(r.level),
     dj: u(r.dj),
     rivalDj: u(r.rivalDj),
@@ -39,6 +41,8 @@ export function matchToRow(m: MatchRecord): MatchInsert {
     goldenGoal: m.goldenGoal ?? false,
     perfects: m.perfects ?? 0,
     goods: m.goods ?? 0,
+    powers: n(m.powers),
+    bestStreak: n(m.bestStreak),
     // Un nivel que no existe (copia escrita a mano, o de una versión futura
     // con niveles nuevos) se guarda como «sin nivel» en vez de colarse.
     level: isLevel(m.level) ? m.level : null,

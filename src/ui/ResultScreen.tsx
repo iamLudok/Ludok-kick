@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { getDj } from '../content/djs'
-import { readResult, readSetup, setupParams } from '../content/setup'
+import { readResult, readSetup, readUnlocked, setupParams } from '../content/setup'
 import { getStage } from '../content/stages'
 import { useLevelTallies } from '../hooks/useHistory'
 import { DjPortrait } from './Art'
@@ -17,6 +17,7 @@ export function ResultScreen() {
   const params = useLocalSearchParams()
   const [setup] = useState(() => readSetup(params))
   const r = readResult(params)
+  const [fresh] = useState(() => readUnlocked(params))
   const me = getDj(setup.dj)
   const rival = getDj(setup.rival)
   const stage = getStage(setup.stage)
@@ -55,10 +56,27 @@ export function ResultScreen() {
         </View>
       </View>
 
+      {fresh.length > 0 && (
+        // Desbloquear un DJ es el momento más celebrable de todo el juego.
+        <View style={styles.unlock}>
+          {fresh.map((id) => {
+            const d = getDj(id)
+            return <DjPortrait key={id} dj={d} size={52} />
+          })}
+          <View>
+            <Txt variant="label" tone="brand">
+              {fresh.length === 1 ? '¡Nuevo DJ desbloqueado!' : '¡Nuevos DJs desbloqueados!'}
+            </Txt>
+            <Txt variant="body">{fresh.map((id) => getDj(id).name).join(' · ')}</Txt>
+          </View>
+        </View>
+      )}
+
       <View style={styles.stats}>
         <Stat label="PERFECT" value={r.perfects} />
         <Stat label="GOOD" value={r.goods} />
         <Stat label="Poderes" value={r.powers} />
+        <Stat label="Racha" value={r.bestStreak} />
       </View>
 
       <Txt variant="data" tone="muted">
@@ -99,4 +117,15 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
   },
   buttons: { flexDirection: 'row', gap: space.md, marginTop: space.sm },
+  unlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: space.xs,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: palette.brand,
+    backgroundColor: palette.surface,
+  },
 })

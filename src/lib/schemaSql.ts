@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS matches (
   goldenGoal INTEGER NOT NULL DEFAULT 0,
   perfects INTEGER NOT NULL DEFAULT 0,
   goods INTEGER NOT NULL DEFAULT 0,
+  powers INTEGER,
+  bestStreak INTEGER,
   level TEXT,
   dj TEXT,
   rivalDj TEXT,
@@ -49,6 +51,9 @@ CREATE INDEX IF NOT EXISTS matches_playedAt_idx ON matches (playedAt);
 export const MIGRATIONS: string[] = [
   // v1 → v2: interruptor del overlay de rendimiento (fps) en Ajustes.
   `ALTER TABLE settings ADD COLUMN showPerf INTEGER;`,
+  // v2 → v3: lo que necesitan las misiones y no se guardaba.
+  `ALTER TABLE matches ADD COLUMN powers INTEGER;
+   ALTER TABLE matches ADD COLUMN bestStreak INTEGER;`,
 ]
 
 /** Versión del esquema de SQLite. NO es la del formato de copia (`version.ts`). */

@@ -9,7 +9,7 @@
  * segundo, crear objetos en cada paso acaba en pausas del recolector de basura,
  * que en un juego se notan como tirones.
  */
-import { beatDelta, judgeDelta, judgePower, speedAt } from './beat'
+import { beatDelta, judgeDelta, judgePower } from './beat'
 import { BALL, BODY, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, POWER, SHOCK, SIM } from './constants'
 import { nextRandom } from './rng'
 import { emptyInput, resetForKickoff, startX } from './state'
@@ -588,9 +588,11 @@ function drop(s: GameState): void {
 const IDLE = emptyInput()
 
 /**
- * Un paso de simulación. `dt` es tiempo de juego (siempre SIM.DT); `realDt` es
- * lo que dura ese paso en el mundo, que es menos cuando el tempo sube. Los
- * relojes (el del partido, las pausas) van en segundos de verdad.
+ * Un paso de simulación. `dt` es tiempo de juego y `realDt` lo que dura ese
+ * paso en el mundo. Hoy son iguales (el juego va siempre a la misma
+ * velocidad), pero los relojes (el del partido, las pausas, los poderes) van
+ * con `realDt` a propósito: son segundos de verdad pase lo que pase con la
+ * simulación.
  */
 function tick(s: GameState, in0: InputFrame, in1: InputFrame, dt: number, realDt: number): void {
   'worklet'
@@ -662,9 +664,9 @@ export type BeatInput = {
  * Avanza el partido `frameDt` segundos de reloj, en pasos fijos de SIM.DT. Lo
  * que sobra se guarda en `s.acc` para el frame siguiente.
  *
- * Con música, el juego va más rápido cuanto más alto el tempo: un segundo de
- * reloj son `bpm / BPM_START` segundos de juego. `beat` es opcional: sin él se
- * juega a velocidad normal y ningún toque cuenta como dado a tiempo.
+ * `beat` es opcional: sin él se juega igual, solo que ningún toque cuenta como
+ * dado a tiempo. El tempo no cambia la velocidad del juego: un DJ de techno
+ * suena más rápido que uno de house, pero los muñecos corren igual.
  */
 export function stepGame(s: GameState, in0: InputFrame, in1: InputFrame, frameDt: number, beat?: BeatInput): void {
   'worklet'
@@ -676,15 +678,13 @@ export function stepGame(s: GameState, in0: InputFrame, in1: InputFrame, frameDt
     bt.bpm = beat.bpm
     bt.dropAt = beat.dropAt
   }
-  s.speed = beat ? speedAt(beat.bpm) : 1
-  s.acc += Math.min(frameDt * s.speed, SIM.MAX_STEPS * SIM.DT)
-  const realStep = SIM.DT / s.speed
+  s.acc += Math.min(frameDt, SIM.MAX_STEPS * SIM.DT)
   while (s.acc >= SIM.DT) {
     // Cada paso ocurre un poco antes del final del frame: lo que quede por
     // simular después de él. Así un toque se juzga en su instante y no en el
     // del frame, que a 60 Hz podía caer hasta 16 ms más tarde.
-    if (beat) bt.now = beat.time - (s.acc - SIM.DT) / s.speed
-    tick(s, in0, in1, SIM.DT, realStep)
+    if (beat) bt.now = beat.time - (s.acc - SIM.DT)
+    tick(s, in0, in1, SIM.DT, SIM.DT)
     s.acc -= SIM.DT
   }
 }

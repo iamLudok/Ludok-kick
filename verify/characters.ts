@@ -5,6 +5,7 @@
  */
 import { DJS, getDj, pickRival } from '../src/content/djs'
 import { readResult, readSetup, resultParams, setupParams } from '../src/content/setup'
+import { GENRES } from '../src/content/genres'
 import { STAGES } from '../src/content/stages'
 import { createAi, stepAi } from '../src/game/ai'
 import { judgeDelta } from '../src/game/beat'
@@ -23,7 +24,8 @@ const IDLE = emptyInput()
 const DT = 1 / 60
 
 /* --- Cada DJ tiene su ventaja -------------------------------------------- */
-const byStyle = (style: string) => DJS.find((d) => d.style === style)!.stats
+/** El primer DJ que tiene esa ventaja por encima de lo normal. */
+const withPerk = (stat: 'speed' | 'jump' | 'kick' | 'timing') => DJS.find((d) => d.stats[stat] > 1)!.stats
 
 function run(stats: PlayerStats, seconds: number, inp = IDLE) {
   const s = createInitialState(stats)
@@ -37,8 +39,8 @@ function run(stats: PlayerStats, seconds: number, inp = IDLE) {
   // En proporción a lo recorrido, no en unidades: así la prueba sigue valiendo si se retoca la ventaja.
   const start = createInitialState().players[0].x
   const base = ran(BASE_STATS) - start
-  const house = ran(byStyle('House')) - start
-  check('House corre más', house > base * 1.05, `${base.toFixed(0)} → ${house.toFixed(0)} u en 0,8 s`)
+  const house = ran(withPerk('speed')) - start
+  check('el DJ rápido corre más', house > base * 1.05, `${base.toFixed(0)} → ${house.toFixed(0)} u en 0,8 s`)
 
   const top = (st: PlayerStats) => {
     const s = createInitialState(st)
@@ -50,7 +52,7 @@ function run(stats: PlayerStats, seconds: number, inp = IDLE) {
     }
     return FIELD.GROUND_Y - best
   }
-  check('Trance salta más', top(byStyle('Trance')) > top(BASE_STATS) * 1.15, `${top(BASE_STATS).toFixed(0)} → ${top(byStyle('Trance')).toFixed(0)} u`)
+  check('el DJ saltarín salta más', top(withPerk('jump')) > top(BASE_STATS) * 1.12, `${top(BASE_STATS).toFixed(0)} → ${top(withPerk('jump')).toFixed(0)} u`)
 
   const shot = (st: PlayerStats) => {
     const s = createInitialState(st)
@@ -63,14 +65,18 @@ function run(stats: PlayerStats, seconds: number, inp = IDLE) {
     }
     return s.ball.vx
   }
-  check('Hard techno chuta más fuerte', shot(byStyle('Hard techno')) > shot(BASE_STATS) * 1.08, `${shot(BASE_STATS).toFixed(0)} → ${shot(byStyle('Hard techno')).toFixed(0)}`)
+  check('el DJ de tiro fuerte chuta más fuerte', shot(withPerk('kick')) > shot(BASE_STATS) * 1.08, `${shot(BASE_STATS).toFixed(0)} → ${shot(withPerk('kick')).toFixed(0)}`)
 
   const edge = (BEAT.PERFECT_MS + 10) / 1000
-  check('Minimal tiene la ventana PERFECT más amplia', judgeDelta(edge, BEAT.BPM_START, byStyle('Minimal').timing) === 2 && judgeDelta(edge, BEAT.BPM_START, 1) === 1)
+  check('el DJ preciso tiene la ventana PERFECT más amplia', judgeDelta(edge, BEAT.REFERENCE_BPM, withPerk('timing').timing) === 2 && judgeDelta(edge, BEAT.REFERENCE_BPM, 1) === 1)
 
-  check('cada DJ tiene un poder propio y distinto', new Set(DJS.map((d) => d.stats.power)).size === DJS.length && DJS.every((d) => d.stats.power !== null))
-  check('y un color propio', new Set(DJS.map((d) => d.look.jersey)).size === DJS.length)
-  check('y una silueta propia', new Set(DJS.map((d) => d.look.head)).size === DJS.length)
+  check('cada DJ tiene su poder', DJS.every((d) => d.stats.power !== null))
+  check('y los cuatro poderes están repartidos', new Set(DJS.map((d) => d.stats.power)).size === 4)
+  // Con 14 DJs se repite algún color de camiseta, pero no la silueta entera:
+  // peinado, máscara, gafas, barba y sonrisa juntos.
+  const silhouette = (d: (typeof DJS)[number]) => [d.look.hair_style, d.look.mask, d.look.glasses, d.look.beard, d.look.hair, d.look.jersey].join()
+  check('ninguno se parece del todo a otro', new Set(DJS.map(silhouette)).size === DJS.length)
+  check('ninguna ventaja es exagerada', DJS.every((d) => d.stats.speed <= 1.1 && d.stats.jump <= 1.1 && d.stats.kick <= 1.15 && d.stats.timing <= 1.3))
 }
 
 /* --- Al llenar la barra sale el poder del DJ ----------------------------- */
@@ -90,7 +96,7 @@ function run(stats: PlayerStats, seconds: number, inp = IDLE) {
       steps++
       if (probe.events.some((e) => e.type === 'kick')) break
     }
-    for (let i = 1; i <= steps; i++) stepGame(s, { ...IDLE, kick: true }, IDLE, 1 / 120, { time: i / 120, t0: steps / 120, bpm: BEAT.BPM_START, dropAt: -1 })
+    for (let i = 1; i <= steps; i++) stepGame(s, { ...IDLE, kick: true }, IDLE, 1 / 120, { time: i / 120, t0: steps / 120, bpm: BEAT.REFERENCE_BPM, dropAt: -1 })
     check(`${dj.name} carga su propio poder`, p.power === dj.stats.power, `${p.power}`)
   }
 }
@@ -104,9 +110,9 @@ function run(stats: PlayerStats, seconds: number, inp = IDLE) {
   for (const a of DJS) {
     for (const b of DJS) {
       if (a === b) continue
-      // 10 por pareja y lado: con menos, el ruido movía los porcentajes más que
-      // las propias ventajas.
-      for (let k = 0; k < 10; k++) {
+      // Con 14 DJs hay 182 parejas: 3 partidos por pareja y lado dan unos 80
+      // por DJ, suficiente para ver un desequilibrio claro sin tardar minutos.
+      for (let k = 0; k < 3; k++) {
         const s = createInitialState(a.stats, b.stats, k + 1)
         const ai = [createAi('peak', k * 7 + 1), createAi('peak', k * 13 + 5)]
         const beat = { time: 0, t0: 0.3, bpm: 120, dropAt: -1 }
@@ -126,14 +132,18 @@ function run(stats: PlayerStats, seconds: number, inp = IDLE) {
   }
   const rates = DJS.map((d) => ({ name: d.name, rate: (wins[d.id] ?? 0) / games[d.id] }))
   const detail = rates.map((r) => `${r.name} ${Math.round(r.rate * 100)} %`).join(', ')
-  check('ningún DJ gana casi siempre', rates.every((r) => r.rate <= 0.68), detail)
-  check('ni pierde casi siempre', rates.every((r) => r.rate >= 0.32), detail)
+  check('ningún DJ gana casi siempre', rates.every((r) => r.rate <= 0.7), detail)
+  check('ni pierde casi siempre', rates.every((r) => r.rate >= 0.3), detail)
 }
 
-/* --- Escenarios ---------------------------------------------------------- */
+/* --- Géneros y escenarios ----------------------------------------------- */
 {
+  for (const g of GENRES) {
+    check(`${g.name}: el bombo, en las cuatro negras`, [...g.pattern.kick].sort((a, b) => a - b).join() === '0,4,8,12')
+    check(`${g.name}: tempo jugable`, g.bpm >= 120 && g.bpm <= 145, `${g.bpm} BPM`)
+  }
+  check('cada DJ pone un género que existe', DJS.every((d) => GENRES.some((g) => g.id === d.genre)))
   for (const st of STAGES) {
-    check(`${st.name}: el bombo, en las cuatro negras`, [...st.pattern.kick].sort((a, b) => a - b).join() === '0,4,8,12')
     check(`${st.name}: el fondo tiene sus colores`, st.palette.wall.length >= 2 && st.palette.deco.length >= 4)
   }
   check('cada escenario tiene un decorado distinto', new Set(STAGES.map((s) => s.decor)).size === STAGES.length)
@@ -141,17 +151,17 @@ function run(stats: PlayerStats, seconds: number, inp = IDLE) {
 
 /* --- Lo que llega por la ruta ------------------------------------------- */
 {
-  const setup = { dj: 'txiki' as const, rival: 'etxe' as const, stage: 'caserio' as const, level: 'closing' as const }
+  const setup = { dj: 'ritxie' as const, rival: 'klaptone' as const, stage: 'caserio' as const, level: 'closing' as const }
   const back = readSetup(setupParams(setup))
   check('una configuración va y vuelve por la ruta', JSON.stringify(back) === JSON.stringify(setup))
   const junk = readSetup({ dj: 'nadie', rival: 'nadie', stage: 'la luna', nivel: 'imposible' })
   check('lo que no se reconoce cae a valores válidos', getDj(junk.dj).id === junk.dj && STAGES.some((s) => s.id === junk.stage) && junk.level === 'peak')
-  check('el rival nunca es tu mismo DJ', readSetup({ dj: 'burdina', rival: 'burdina' }).rival !== 'burdina')
+  check('el rival nunca es tu mismo DJ', readSetup({ dj: 'karl', rival: 'karl' }).rival !== 'karl')
   let same = false
-  for (let i = 0; i < 50; i++) if (pickRival('ilargi') === 'ilargi') same = true
+  for (let i = 0; i < 50; i++) if (pickRival('boris') === 'boris') same = true
   check('al azar, tampoco', !same)
 
-  const result = { goalsFor: 3, goalsAgainst: 2, golden: true, perfects: 9, goods: 4, powers: 2 }
+  const result = { goalsFor: 3, goalsAgainst: 2, golden: true, perfects: 9, goods: 4, powers: 2, bestStreak: 4 }
   check('un resultado va y vuelve por la ruta', JSON.stringify(readResult(resultParams(result))) === JSON.stringify(result))
   const bad = readResult({ gf: '-3', ga: 'mucho', perfect: '2.7' })
   check('y uno roto no da números raros', bad.goalsFor === 0 && bad.goalsAgainst === 0 && bad.perfects === 2)

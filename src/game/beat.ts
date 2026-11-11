@@ -6,17 +6,10 @@
 import { BEAT } from './constants'
 import type { Bar, Judge } from './types'
 
-/** El tempo que toca según lo avanzado del partido (0 al empezar, 1 al acabar). */
-export function tempoAt(progress: number): number {
+/** Cuánto se estrechan las ventanas del remate a este tempo (más de 1, más estrechas). */
+export function windowScale(bpm: number): number {
   'worklet'
-  const p = progress < 0 ? 0 : progress > 1 ? 1 : progress
-  return Math.round(BEAT.BPM_START + (BEAT.BPM_END - BEAT.BPM_START) * p)
-}
-
-/** Cuánto más rápido va el juego a este tempo. */
-export function speedAt(bpm: number): number {
-  'worklet'
-  return bpm / BEAT.BPM_START
+  return bpm / BEAT.REFERENCE_BPM
 }
 
 /**
@@ -56,7 +49,7 @@ export function beatPhase(time: number, t0: number, bpm: number): number {
  */
 export function judgeDelta(deltaSeconds: number, bpm: number, timing = 1): Judge {
   'worklet'
-  const ms = Math.abs(deltaSeconds) * 1000 * speedAt(bpm)
+  const ms = Math.abs(deltaSeconds) * 1000 * windowScale(bpm)
   if (ms <= BEAT.PERFECT_MS * timing) return 2
   if (ms <= BEAT.GOOD_MS) return 1
   return 0

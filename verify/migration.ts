@@ -95,6 +95,7 @@ async function main() {
   }
   const m = (await old.execute(`SELECT * FROM matches WHERE id = 'm1'`)).rows[0]
   check('el partido de antes sigue entero', Number(m?.goalsFor) === 3 && Number(m?.perfects) === 7 && m?.dj === 'txiki')
+  check('y lo que entonces no se contaba queda vacío, no a cero', m?.powers === null && m?.bestStreak === null)
 
   const db = drizzle(old, { schema }) as unknown as AppDb
   const s = await readSettings(db)

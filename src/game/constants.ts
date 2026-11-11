@@ -125,17 +125,14 @@ export const KICK = {
 
 export const BEAT = {
   /**
-   * El tempo sube a lo largo del partido, de BPM_START a BPM_END, compás a
-   * compás. La velocidad del juego sube con él: a 145 BPM todo va un 21 % más
-   * rápido que a 120.
+   * Las ventanas del remate se definen a este tempo. Cada DJ pone su música a
+   * su propio BPM, y las ventanas se encogen o se estiran en proporción: son
+   * siempre la misma fracción del beat, así que ningún género es más fácil.
    */
-  BPM_START: 120,
-  BPM_END: 145,
+  REFERENCE_BPM: 120,
   /**
    * Ventanas del remate al ritmo: distancia máxima, en milisegundos, entre el
-   * toque al vinilo y el beat más cercano, medidas a BPM_START. Al subir el
-   * tempo se encogen en la misma proporción: siempre son la misma fracción del
-   * compás, y con el juego más rápido no se vuelve más fácil acertar.
+   * toque al vinilo y el beat más cercano, medidas a REFERENCE_BPM.
    */
   PERFECT_MS: 80,
   GOOD_MS: 160,

@@ -47,6 +47,7 @@ export type MatchResult = {
   perfects: number
   goods: number
   powers: number
+  bestStreak: number
 }
 
 export function resultParams(r: MatchResult): Record<string, string> {
@@ -57,7 +58,14 @@ export function resultParams(r: MatchResult): Record<string, string> {
     perfect: String(r.perfects),
     good: String(r.goods),
     poderes: String(r.powers),
+    racha: String(r.bestStreak),
   }
+}
+
+/** Los DJs que desbloqueó el partido, para anunciarlos en el resultado. */
+export function readUnlocked(params: RawParams): DjId[] {
+  const raw = one(params.nuevos) ?? ''
+  return raw.split(',').filter(isDjId)
 }
 
 export function readResult(params: RawParams): MatchResult {
@@ -72,5 +80,6 @@ export function readResult(params: RawParams): MatchResult {
     perfects: n('perfect'),
     goods: n('good'),
     powers: n('poderes'),
+    bestStreak: n('racha'),
   }
 }

@@ -51,7 +51,7 @@ function kickOnBeat(s: GameState, offset: number): number {
   const t0 = 100 + steps / 120 - offset
   let judge = -1
   for (let i = 1; i <= steps; i++) {
-    stepGame(s, input({ kick: true }), IDLE, 1 / 120, { time: 100 + i / 120, t0, bpm: BEAT.BPM_START, dropAt: -1 })
+    stepGame(s, input({ kick: true }), IDLE, 1 / 120, { time: 100 + i / 120, t0, bpm: BEAT.REFERENCE_BPM, dropAt: -1 })
     const e = s.events.find((ev) => ev.type === 'kick')
     if (e && e.type === 'kick') judge = e.judge
   }

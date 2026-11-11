@@ -9,18 +9,20 @@ import { scheduleOnRN } from 'react-native-worklets'
 import { createAudioClock, readAudioClock, type AudioClock } from '../audio/clock'
 import { useAudioSession } from '../audio/useAudioSession'
 import { createAi, stepAi, type AiState } from '../game/ai'
-import { barAt, beatPhase, tempoAt } from '../game/beat'
+import { barAt, beatPhase } from '../game/beat'
 import { BEAT, MATCH } from '../game/constants'
 import { createInitialState, emptyInput } from '../game/state'
 import { stepGame, type BeatInput } from '../game/step'
 import type { GameState, InputFrame, Phase } from '../game/types'
-import { addMatch } from '../lib/matches'
+import { addMatch, allMatches } from '../lib/matches'
+import { newlyUnlocked } from '../content/missions'
 import { useSettings } from '../hooks/useSettings'
 import { effectiveOffsetMs, updateSettings } from '../lib/settings'
-import { burst, confetti, createPool, PC, updateParticles } from '../render/particles'
+import { burst, createPool, PC, updateParticles } from '../render/particles'
 import { FX_LIFE, SHOCK_LIFE, createPainter, drawFrame, judgeLabel, powerLabel, type BeatView } from '../render/draw'
-import { getDj } from '../content/djs'
+import { getDj, type DjId } from '../content/djs'
 import { readSetup, resultParams, setupParams, type MatchResult, type MatchSetup } from '../content/setup'
+import { getGenre } from '../content/genres'
 import { getStage } from '../content/stages'
 import { Txt } from './Text'
 import { TouchControls } from './TouchControls'
@@ -66,6 +68,9 @@ type Runtime = {
   perfects: number
   goods: number
   powers: number
+  /** Racha de PERFECT seguidos en curso y la mejor del partido. */
+  streak: number
+  bestStreak: number
   saved: boolean
   hud: HudData
   clock: AudioClock
@@ -141,11 +146,9 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
   const showPerf = useSharedValue(false)
 
   const { data: settings } = useSettings()
-  // Lo avanzado del partido (0–1). Lo escribe el bucle del juego y lo lee la
-  // música al empezar cada compás para decidir su tempo.
-  const progress = useSharedValue(0)
-  const tempo = useCallback(() => tempoAt(progress.value), [progress])
-  const audio = useAudioSession(stage.pattern, tempo, { music: settings.musicVolume, sfx: settings.sfxVolume })
+  // Suena la música de tu DJ, a su tempo, todo el partido.
+  const genre = getGenre(me.genre)
+  const audio = useAudioSession(genre.pattern, genre.bpm, { music: settings.musicVolume, sfx: settings.sfxVolume })
   const { source, bars, playHit, playGoal, playPower, playCharged, drop: prepareDrop } = audio
   const dropInfo = useSharedValue<DropInfo>({ goal: -1, at: -1 })
 
@@ -174,23 +177,34 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
 
   const onEnded = useCallback(
     (r: MatchResult) => {
+      const save = async (): Promise<DjId[]> => {
+        const before = await allMatches()
+        const saved = await addMatch({
+          goalsFor: r.goalsFor,
+          goalsAgainst: r.goalsAgainst,
+          goldenGoal: r.golden,
+          perfects: r.perfects,
+          goods: r.goods,
+          powers: r.powers,
+          bestStreak: r.bestStreak,
+          level,
+          dj: setup.dj,
+          rivalDj: setup.rival,
+          stage: setup.stage,
+        })
+        return newlyUnlocked(before, [...before, saved])
+      }
       // Un fallo al guardar no debe impedir ver el resultado: el partido ya se
       // jugó, y lo peor que pasa es que no sale en el historial.
-      addMatch({
-        goalsFor: r.goalsFor,
-        goalsAgainst: r.goalsAgainst,
-        goldenGoal: r.golden,
-        perfects: r.perfects,
-        goods: r.goods,
-        level,
-        dj: setup.dj,
-        rivalDj: setup.rival,
-        stage: setup.stage,
-      }).catch(() => undefined)
+      const saving = save().catch(() => [] as DjId[])
       // Un momento con el marcador final a la vista y luego al resultado. Con
       // `replace`, «atrás» desde el resultado no vuelve a un partido acabado.
-      setTimeout(() => {
-        router.replace({ pathname: '/resultado', params: { ...setupParams(setup), ...resultParams(r) } })
+      setTimeout(async () => {
+        const fresh = await saving
+        router.replace({
+          pathname: '/resultado',
+          params: { ...setupParams(setup), ...resultParams(r), nuevos: fresh.join(',') },
+        })
       }, END_PAUSE_MS)
     },
     [level, router, setup],
@@ -216,6 +230,8 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           perfects: 0,
           goods: 0,
           powers: 0,
+          streak: 0,
+          bestStreak: 0,
           saved: false,
           hud: {
             score0: -1,
@@ -228,7 +244,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
             energy1: -1,
           },
           clock: createAudioClock(),
-          beatIn: { time: 0, t0: 0, bpm: BEAT.BPM_START, dropAt: -1 },
+          beatIn: { time: 0, t0: 0, bpm: BEAT.REFERENCE_BPM, dropAt: -1 },
           beatView: { phase: -1, fx: [], shock: { x: 0, y: 0, age: -1 }, particles: createPool() },
           perfTime: 0,
           perfFrames: 0,
@@ -281,6 +297,11 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
         if (ev.type === 'kick' || ev.type === 'head') {
           scheduleOnRN(playHit, ev.judge)
           if (ev.side === 0 && ev.judge === 2) rt.perfects++
+          if (ev.side === 0) {
+            // Cualquier toque que no sea PERFECT corta la racha.
+            rt.streak = ev.judge === 2 ? rt.streak + 1 : 0
+            rt.bestStreak = Math.max(rt.bestStreak, rt.streak)
+          }
           if (ev.side === 0 && ev.judge === 1) rt.goods++
           if (ev.judge > 0) view.fx.push({ label: judgeLabel(ev.judge), x: ev.x, y: ev.y, age: 0 })
           if (ev.judge === 2) burst(view.particles, ev.x, ev.y, 14, 520, PC.PERFECT)
@@ -293,7 +314,6 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           if (ev.side === 0) scheduleOnRN(playCharged)
         } else if (ev.type === 'goal') {
           scheduleOnRN(onGoal, s.score[0] + s.score[1], ev.at)
-          confetti(view.particles, ev.side, 70)
         } else if (ev.type === 'drop') {
           view.shock.x = ev.x
           view.shock.y = ev.y
@@ -312,6 +332,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           perfects: rt.perfects,
           goods: rt.goods,
           powers: rt.powers,
+          bestStreak: rt.bestStreak,
         })
       }
       picture.value = createPicture((canvas) => {
@@ -345,7 +366,6 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           energy1: s.players[1].energy,
         }
         scheduleOnRN(setHud, rt.hud)
-        progress.value = 1 - s.timeLeft / MATCH.DURATION
       }
 
       if (showPerf.value) {
@@ -355,7 +375,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
         if (rt.perfTime >= 0.5) {
           const fps = Math.round(rt.perfFrames / rt.perfTime)
           const work = (rt.perfWork / rt.perfFrames).toFixed(1)
-          const sound = beat ? `audio ${Math.round(offsetMs.value)} ms · ×${s.speed.toFixed(2)}` : 'sin audio'
+          const sound = beat ? `audio ${Math.round(offsetMs.value)} ms` : 'sin audio'
           scheduleOnRN(setPerf, `${fps} fps · ${work} ms · ${sound}`)
           rt.perfTime = 0
           rt.perfFrames = 0
@@ -376,7 +396,6 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
       playCharged,
       playHit,
       playPower,
-      progress,
       runtime,
       seed,
       showPerf,

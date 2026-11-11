@@ -27,6 +27,10 @@ export interface MatchRecord {
   /** Remates PERFECT y GOOD del jugador. */
   perfects: number
   goods: number
+  /** Poderes lanzados por el jugador. Ausente en partidos anteriores a contarlos. */
+  powers?: number
+  /** La racha más larga de PERFECT seguidos. Ausente en partidos anteriores a contarla. */
+  bestStreak?: number
   level?: Level
   /** Identificadores del DJ propio, del rival y del escenario. */
   dj?: string
