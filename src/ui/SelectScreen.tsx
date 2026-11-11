@@ -10,7 +10,7 @@ import { useSettings } from '../hooks/useSettings'
 import { DjPortrait } from './Art'
 import { Button } from './Button'
 import { Flag } from './Flag'
-import { POWER_HINT, POWER_NAME, djNameColor } from './labels'
+import { POWER_HINT, POWER_NAME } from './labels'
 import { Txt } from './Text'
 import { palette, radius, space } from './theme'
 
@@ -65,7 +65,7 @@ export function SelectScreen() {
             <>
               <View style={styles.nameRow}>
                 <Flag country={chosen.origin} height={18} />
-                <Txt variant="title" style={{ color: djNameColor(chosen.look.jersey, palette.fg) }}>
+                <Txt variant="title">
                   {chosen.name}
                 </Txt>
               </View>

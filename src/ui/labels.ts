@@ -47,15 +47,3 @@ export const POWER_HINT: Record<PowerKind, string> = {
   jester: 'al rival se le cambian izquierda y derecha 2 s',
   blackout: 'el rival se queda sin energía ni poderes',
 }
-
-/**
- * El color con el que se escribe el nombre de un DJ: el de su camiseta, salvo
- * que sea tan oscura que sobre el fondo de la app no se leería (los DJs que
- * visten de negro), y entonces el color de texto normal.
- */
-export function djNameColor(jersey: string, fallback: string): string {
-  const hex = jersey.replace('#', '')
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-  return luminance < 0.18 ? fallback : jersey
-}

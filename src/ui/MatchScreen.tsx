@@ -32,7 +32,6 @@ import { Flag } from './Flag'
 import type { BadgeId } from '../content/ladder'
 import { Txt } from './Text'
 import { TouchControls } from './TouchControls'
-import { djNameColor } from './labels'
 import { palette, radius, space } from './theme'
 
 /** Lo que el marcador necesita saber del partido. Solo cambia unas pocas veces por minuto. */
@@ -556,13 +555,13 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
             <PowerBar value={hud.energy0} color={me.look.jersey} full={stage.palette.power} />
           </View>
           <View style={styles.scoreboard}>
-            <Txt variant="score" style={{ color: djNameColor(me.look.jersey, palette.fg) }}>
+            <Txt variant="score">
               {hud.score0}
             </Txt>
             <Txt variant={hud.golden ? 'label' : 'score'} tone={hud.golden ? 'brand' : 'fg'} style={styles.clock}>
               {hud.golden ? 'Gol de oro' : clock(hud.seconds)}
             </Txt>
-            <Txt variant="score" style={{ color: djNameColor(rivalDj.look.jersey, palette.fg) }}>
+            <Txt variant="score">
               {hud.score1}
             </Txt>
           </View>
@@ -591,7 +590,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
         <Pressable style={styles.vs} onPress={() => setIntro(false)} accessibilityLabel="Empezar el partido">
           <View style={styles.vsSide}>
             <DjPortrait dj={me} size={170} />
-            <Txt variant="title" style={{ color: djNameColor(me.look.jersey, palette.fg) }}>
+            <Txt variant="title">
               {me.name}
             </Txt>
           </View>
@@ -600,7 +599,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           </Txt>
           <View style={styles.vsSide}>
             <DjPortrait dj={rivalDj} size={170} flip />
-            <Txt variant="title" style={{ color: djNameColor(rivalDj.look.jersey, palette.fg) }}>
+            <Txt variant="title">
               {rivalDj.name}
             </Txt>
           </View>

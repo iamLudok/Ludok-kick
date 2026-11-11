@@ -10,7 +10,7 @@ import { useHistory } from '../hooks/useHistory'
 import { BadgeIcon } from './BadgeIcon'
 import { DjPortrait } from './Art'
 import { Button } from './Button'
-import { LEVEL_NAME, djNameColor } from './labels'
+import { LEVEL_NAME } from './labels'
 import { Txt } from './Text'
 import { palette, radius, space } from './theme'
 
@@ -60,7 +60,7 @@ export function ResultScreen() {
         <View style={styles.scoreRow}>
           <View style={styles.side}>
             <DjPortrait dj={me} size={84} />
-            <Txt variant="label" numberOfLines={1} style={{ color: djNameColor(me.look.jersey, palette.fg) }}>
+            <Txt variant="label" numberOfLines={1}>
               {me.name}
             </Txt>
           </View>
@@ -69,7 +69,7 @@ export function ResultScreen() {
           </Txt>
           <View style={styles.side}>
             <DjPortrait dj={rival} size={84} flip />
-            <Txt variant="label" numberOfLines={1} style={{ color: djNameColor(rival.look.jersey, palette.fg) }}>
+            <Txt variant="label" numberOfLines={1}>
               {rival.name}
             </Txt>
           </View>

@@ -12,7 +12,6 @@ import { LEVELS } from '../types'
 import { DjPortrait } from './Art'
 import { Button } from './Button'
 import { Txt } from './Text'
-import { djNameColor } from './labels'
 import { palette, space } from './theme'
 
 export function MenuScreen() {
@@ -100,7 +99,7 @@ export function MenuScreen() {
               <DjPortrait dj={dj} size={72} locked={locked} />
               <Txt
                 variant="label"
-                style={{ color: locked ? palette.muted : djNameColor(dj.look.jersey, palette.fg) }}
+                style={{ color: locked ? palette.muted : palette.fg }}
                 numberOfLines={1}
               >
                 {locked ? '???' : dj.name}

@@ -13,7 +13,7 @@ import { DjPortrait, StagePreview } from './Art'
 import { BadgeIcon } from './BadgeIcon'
 import { Button } from './Button'
 import { Flag } from './Flag'
-import { LEVEL_NAME, djNameColor } from './labels'
+import { LEVEL_NAME } from './labels'
 import { Txt } from './Text'
 import { palette, radius, space } from './theme'
 
@@ -81,7 +81,7 @@ export function RivalScreen() {
           {open ? (
             <View style={styles.nameRow}>
               <Flag country={d.origin} height={16} />
-              <Txt variant="body" style={{ color: djNameColor(d.look.jersey, palette.fg) }}>
+              <Txt variant="body">
                 {d.name}
               </Txt>
             </View>
