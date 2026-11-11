@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Ludok Kick",
+    "slug": "ludok-kick",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "scheme": "ludokkick",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "requireFullScreen": true
+    },
+    "android": {
+      "package": "com.ludok.kick",
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "backgroundColor": "#7A45C4",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      [
+        "expo-navigation-bar",
+        {
+          "hidden": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#0a0a0c",
+          "imageWidth": 160
+        }
+      ]
+    ]
+  }
+}
