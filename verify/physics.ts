@@ -48,7 +48,7 @@ function rng(seed: number): () => number {
 }
 
 function randomInput(r: () => number): InputFrame {
-  return { move: Math.floor(r() * 3) - 1, jump: r() < 0.4, kick: r() < 0.5, power: false }
+  return { move: Math.floor(r() * 3) - 1, jump: r() < 0.4, kick: r() < 0.5, power: false, dash: 0 }
 }
 
 /* --- Saque y reposo ------------------------------------------------------ */

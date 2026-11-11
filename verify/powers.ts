@@ -3,7 +3,7 @@
  * corre en el móvil: que la barra se llena con PERFECT y solo con PERFECT,
  * que un poder se lanza una vez por pulsación y que cada uno hace lo suyo.
  */
-import { BALL, BEAT, FIELD, MATCH, PLAYER, POWER } from '../src/game/constants'
+import { BALL, BEAT, DASH, FIELD, MATCH, PLAYER, POWER } from '../src/game/constants'
 import { createInitialState, emptyInput } from '../src/game/state'
 import { stepGame, type BeatInput } from '../src/game/step'
 import type { GameEvent, GameState, InputFrame, PowerKind } from '../src/game/types'
@@ -361,6 +361,30 @@ function withPower(kind: PowerKind, seed = 1): GameState {
   s.players[1].power = 'stomp'
   const events = run(s, 0.2, IDLE, input({ power: true }))
   check('y durante el apagón no puede lanzar nada', !events.some((e) => e.type === 'power' && e.side === 1))
+}
+
+/* --- Dash ---------------------------------------------------------------- */
+{
+  const s = playing()
+  s.ball.x = 900
+  const x0 = s.players[0].x
+  run(s, 1 / 60, input({ dash: 1 }))
+  run(s, DASH.TIME)
+  const dashed = s.players[0].x - x0
+  const walk = playing()
+  walk.ball.x = 900
+  const w0 = walk.players[0].x
+  run(walk, 1 / 60 + DASH.TIME, input({ move: 1 }))
+  const walked = walk.players[0].x - w0
+  check('el dash recorre mucho más que andar lo mismo', dashed > walked * 1.8, `${walked.toFixed(0)} → ${dashed.toFixed(0)} u`)
+  // Primero se deja que frene la inercia del primero (sigue dentro de la espera).
+  run(s, 0.3)
+  const x1 = s.players[0].x
+  run(s, 1 / 60, input({ dash: 1 }))
+  run(s, DASH.TIME)
+  check('no se puede encadenar otro enseguida', s.players[0].x - x1 < dashed * 0.3)
+  const ev = playing()
+  check('y cuenta como dash para los logros', run(ev, 1 / 60, input({ dash: -1 })).some((e) => e.type === 'dash'))
 }
 
 /* --- Azar reproducible ---------------------------------------------------- */

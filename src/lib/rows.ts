@@ -23,6 +23,10 @@ export function rowToMatch(r: MatchRow): MatchRecord {
     goods: r.goods,
     powers: u(r.powers),
     bestStreak: u(r.bestStreak),
+    kicks: u(r.kicks),
+    jumps: u(r.jumps),
+    dashes: u(r.dashes),
+    coins: u(r.coins),
     level: u(r.level),
     dj: u(r.dj),
     rivalDj: u(r.rivalDj),
@@ -43,6 +47,10 @@ export function matchToRow(m: MatchRecord): MatchInsert {
     goods: m.goods ?? 0,
     powers: n(m.powers),
     bestStreak: n(m.bestStreak),
+    kicks: n(m.kicks),
+    jumps: n(m.jumps),
+    dashes: n(m.dashes),
+    coins: n(m.coins),
     // Un nivel que no existe (copia escrita a mano, o de una versión futura
     // con niveles nuevos) se guarda como «sin nivel» en vez de colarse.
     level: isLevel(m.level) ? m.level : null,
@@ -63,6 +71,12 @@ export function rowToSettings(r: SettingsRow): Settings {
     lastLevel: u(r.lastLevel),
     showPerf: u(r.showPerf),
     unlockAll: u(r.unlockAll),
+    coins: r.coins,
+    upSpeed: r.upSpeed,
+    upKick: r.upKick,
+    upJump: r.upJump,
+    upDash: r.upDash,
+    upPower: r.upPower,
     lastBackup: r.lastBackup,
     schemaVersion: r.schemaVersion,
   }
@@ -79,6 +93,13 @@ export function settingsToRow(s: Settings): SettingsInsert {
     lastLevel: isLevel(s.lastLevel) ? s.lastLevel : null,
     showPerf: n(s.showPerf),
     unlockAll: n(s.unlockAll),
+    // `?? 0`: una copia de antes de la tienda no trae estos campos.
+    coins: s.coins ?? 0,
+    upSpeed: s.upSpeed ?? 0,
+    upKick: s.upKick ?? 0,
+    upJump: s.upJump ?? 0,
+    upDash: s.upDash ?? 0,
+    upPower: s.upPower ?? 0,
     lastBackup: s.lastBackup,
     schemaVersion: s.schemaVersion ?? SCHEMA_VERSION,
   }

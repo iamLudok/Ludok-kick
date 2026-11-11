@@ -20,6 +20,11 @@ export type InputFrame = {
   jump: boolean
   kick: boolean
   power: boolean
+  /**
+   * Dash: -1 o 1 durante el instante en que se pide (doble toque a un lado),
+   * 0 el resto. Es un pulso, no un botón mantenido.
+   */
+  dash: number
 }
 
 /** Las habilidades de DJ: una por DJ (ver `src/content/djs.ts`). */
@@ -61,6 +66,10 @@ export type PlayerStats = {
   speed: number
   jump: number
   kick: number
+  /** Lo que recorre el dash. */
+  dash: number
+  /** Lo que carga la barra de energía cada PERFECT. */
+  charge: number
   /** Multiplica la ventana PERFECT: más de 1, más fácil clavar el beat. */
   timing: number
   /** El poder propio del personaje; null para que toque al azar. */
@@ -110,6 +119,10 @@ export type PlayerState = {
   blackoutT: number
   /** Tiene un Rayo preparado para su siguiente tiro. */
   laser: boolean
+  /** Dash en curso (lo que le queda) y espera hasta el siguiente. */
+  dashT: number
+  dashCd: number
+  dashDir: number
 }
 
 export type BallState = {
@@ -142,6 +155,8 @@ export type GameEvent =
   /** Un toque al vinilo, con el pie o con la cabeza, y dónde estaba el vinilo. */
   | { type: 'kick' | 'head'; side: Side; judge: Judge; x: number; y: number }
   | { type: 'bounce'; speed: number }
+  /** Lo que hizo cada jugador, para los logros («gana sin saltar»…). */
+  | { type: 'jump' | 'swing' | 'dash'; side: Side }
   /** Se lanza un poder; (x, y) es la cabeza de quien lo lanza. */
   | { type: 'power'; side: Side; kind: PowerKind; x: number; y: number }
   /** La barra de energía se llenó y trajo un poder. */

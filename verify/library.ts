@@ -1,5 +1,7 @@
 /** Las reglas de ajustes e historial, una por una, con el código real. */
 import { BEAT } from '../src/game/constants'
+import { UPGRADE, statsFor, upgradeCost } from '../src/game/upgrades'
+import { addCoins, buyUpgrade, levelsOf } from '../src/lib/progress'
 import { addMatch, listMatches, tally } from '../src/lib/matches'
 import {
   DEFAULT_SETTINGS,
@@ -46,6 +48,25 @@ async function main() {
   eq('calibrado a 0: sigue mandando', effectiveOffsetMs({ ...uncalibrated, audioOffsetMs: 0 }, 30), 0)
   eq('sin calibrar: lo que diga el móvil', effectiveOffsetMs(uncalibrated, 31.4), 31)
   eq('sin calibrar y sin dato del móvil: el valor típico', effectiveOffsetMs(uncalibrated, 0), BEAT.DEFAULT_OFFSET_MS)
+
+  /* --- Monedas y mejoras ------------------------------------------------- */
+  await freshDbAsCurrent()
+  await ensureSettings()
+  eq('se empieza sin monedas', (await getSettings()).coins, 0)
+  eq('sin monedas no se compra', await buyUpgrade('speed'), 'coins')
+  await addCoins(upgradeCost(0) + upgradeCost(1) - 1)
+  eq('con las justas, sí', await buyUpgrade('speed'), null)
+  const after = await getSettings()
+  check('subir un nivel cuesta lo que dice', after.upSpeed === 1 && after.coins === upgradeCost(1) - 1, `nivel ${after.upSpeed}, quedan ${after.coins}`)
+  eq('y el siguiente ya no llega por una moneda', await buyUpgrade('speed'), 'coins')
+  eq('las demás mejoras no se tocan', after.upKick + after.upJump + after.upDash + after.upPower, 0)
+  await updateSettings({ upJump: UPGRADE.MAX_LEVEL, coins: 99999 })
+  eq('al máximo no se puede subir más', await buyUpgrade('jump'), 'max')
+  eq('y no cobra', (await getSettings()).coins, 99999)
+  await addCoins(-50)
+  eq('no se pueden restar monedas por la puerta de atrás', (await getSettings()).coins, 99999)
+  const st = statsFor(levelsOf(await getSettings()), 'scratch')
+  check('las mejoras se notan en las estadísticas', st.jump > 1 && st.speed > 1 && st.kick === 1, JSON.stringify(st))
 
   /* --- Historial --------------------------------------------------------- */
   await freshDbAsCurrent()

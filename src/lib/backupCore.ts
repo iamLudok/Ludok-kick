@@ -24,6 +24,12 @@ export const DEFAULT_SETTINGS: Settings = {
   musicVolume: 1,
   sfxVolume: 1,
   lastBackup: 0,
+  coins: 0,
+  upSpeed: 0,
+  upKick: 0,
+  upJump: 0,
+  upDash: 0,
+  upPower: 0,
   schemaVersion: SCHEMA_VERSION,
 }
 
@@ -108,6 +114,13 @@ export async function importBackup(
       lastStage: parsed.settings.lastStage ?? current.lastStage,
       lastLevel: parsed.settings.lastLevel ?? current.lastLevel,
       showPerf: parsed.settings.showPerf ?? current.showPerf,
+      // Las monedas y las mejoras son progreso, como el historial: viajan.
+      coins: parsed.settings.coins ?? current.coins,
+      upSpeed: parsed.settings.upSpeed ?? current.upSpeed,
+      upKick: parsed.settings.upKick ?? current.upKick,
+      upJump: parsed.settings.upJump ?? current.upJump,
+      upDash: parsed.settings.upDash ?? current.upDash,
+      upPower: parsed.settings.upPower ?? current.upPower,
       id: 'app',
     })
   }

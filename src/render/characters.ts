@@ -271,12 +271,9 @@ function drawBack(canvas: SkCanvas, d: DjPaints): void {
     canvas.drawRRect({ rect, rx: R, ry: R * 0.9 }, d.outline)
   } else if (hs === 'bob' || hs === 'bobSide' || hs === 'bobCenter') {
     const rect = { x: -R - 8, y: -R, width: R * 2 + 14, height: R * 2 + 10 }
-    canvas.drawRRect({ rect, rx: R, ry: R * 0.8 }, d.hair)
-    if (l.streaks) {
-      // Los mechones de color asoman por los dos lados de la cara, hasta la mandíbula.
-      canvas.drawRRect({ rect: { x: -R - 8, y: -R + 6, width: 16, height: R * 2 + 4 }, rx: 8, ry: 8 }, d.streak)
-      canvas.drawRRect({ rect: { x: R - 8, y: -R + 6, width: 14, height: R * 2 + 4 }, rx: 7, ry: 7 }, d.streak)
-    }
+    // Con mechones de color, la melena entera es de ese color (las raíces
+    // oscuras se pintan luego, arriba).
+    canvas.drawRRect({ rect, rx: R, ry: R * 0.8 }, l.streaks ? d.streak : d.hair)
     canvas.drawRRect({ rect, rx: R, ry: R * 0.8 }, d.outline)
   } else if (hs === 'bun') {
     canvas.drawCircle(-6, -R - 6, 13, d.hair)
@@ -326,6 +323,39 @@ function drawFringe(canvas: SkCanvas, d: DjPaints): void {
   canvas.restore()
 }
 
+/**
+ * Raya al medio con dos cortinas que bajan por delante de la cara hasta la
+ * mandíbula. Van encima de todo, contorno de la cabeza incluido: por debajo,
+ * el contorno las cortaba y parecían dos piezas sueltas.
+ */
+function drawCurtains(canvas: SkCanvas, d: DjPaints): void {
+  'worklet'
+  const c = d.look.streaks ? d.streak : d.hair
+  const left = Skia.Path.Make()
+  left.moveTo(-4, -R - 6)
+  left.quadTo(-R - 14, -R + 2, -R - 10, R + 10)
+  left.lineTo(-R + 6, R + 4)
+  left.quadTo(-R + 2, -6, -6, -R + 4)
+  left.close()
+  const right = Skia.Path.Make()
+  right.moveTo(0, -R - 6)
+  right.quadTo(R + 12, -R + 2, R + 8, R + 8)
+  right.lineTo(R - 4, R + 2)
+  right.quadTo(R - 4, -8, 4, -R + 6)
+  right.close()
+  for (const p of [left, right]) {
+    canvas.drawPath(p, c)
+    canvas.drawPath(p, d.thinOutline)
+  }
+  // Las raíces oscuras arriba, también sobre las cortinas.
+  canvas.save()
+  canvas.clipRRect({ rect: { x: -R - 20, y: -R - 20, width: R * 2 + 40, height: 22 }, rx: 0, ry: 0 }, ClipOp.Intersect, true)
+  canvas.drawPath(left, d.hair)
+  canvas.drawPath(right, d.hair)
+  canvas.restore()
+  canvas.drawLine(-2, -R - 4, -2, -R + 6, d.line)
+}
+
 /** Pelo por encima de la cabeza. */
 function drawHair(canvas: SkCanvas, d: DjPaints): void {
   'worklet'
@@ -355,12 +385,9 @@ function drawHair(canvas: SkCanvas, d: DjPaints): void {
     // Flequillo recto tapando la frente.
     canvas.drawRect({ x: -R, y: -R, width: R * 2, height: R - 14 }, d.hair)
   } else if (hs === 'bobCenter') {
-    // Raya al medio: dos cortinas que enmarcan la cara, del color de los mechones.
-    const c = d.look.streaks ? d.streak : d.hair
-    canvas.drawOval({ x: -R - 2, y: -R - 10, width: R * 2 + 4, height: 22 }, d.hair)
-    canvas.drawOval({ x: -R - 14, y: -R - 6, width: R, height: R * 2.2 }, c)
-    canvas.drawOval({ x: R - 10, y: -R - 6, width: R * 0.7, height: R * 2.2 }, c)
-    canvas.drawLine(-2, -R - 2, -6, -R + 10, d.line)
+    // Las raíces oscuras en lo alto; las cortinas de delante van aparte
+    // (`drawCurtains`), encima del contorno de la cabeza.
+    canvas.drawOval({ x: -R - 4, y: -R - 12, width: R * 2 + 8, height: 24 }, d.hair)
   } else if (hs === 'bobSide') {
     // Raya al lado: el pelo cae en diagonal sobre la frente desde la nuca.
     const p = Skia.Path.Make()
@@ -602,6 +629,7 @@ export function drawHead(
     // El borde de la capucha enmarca la cara.
     canvas.drawArc({ x: -R - 3, y: -R - 3, width: R * 2 + 6, height: R * 2 + 6 }, 120, 260, false, d.accentStroke)
   }
+  if (l.hair === 'bobCenter') drawCurtains(canvas, d)
   if (l.hair === 'quiff') {
     // El tupé: un mechón que sube por delante, por encima de la cabeza.
     const t = Skia.Path.Make()

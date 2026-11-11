@@ -20,12 +20,14 @@ siguiente.
 | 5 | Poderes de DJ y barra de energía | Hecha |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Hecha |
 | 7 | Pulido: partículas, focos al ritmo, sonidos de interfaz, icono y splash | Hecha |
-| 8 | 11 DJs con su música y su habilidad, misiones para desbloquearlos y pantalla VS | Hecha |
+| 8 | 11 DJs con su música y su habilidad, pantalla VS | Hecha |
+| 9 | Escalera de rivales, logros por rival, monedas, tienda de mejoras, dash y banderas | Hecha |
 
 ## Cómo se juega
 
 - **Mitad izquierda de la pantalla**: moverse. No hace falta acertar en las flechas; cuenta
-  cualquier toque, y se puede deslizar de un lado a otro sin levantar el dedo.
+  cualquier toque, y se puede deslizar de un lado a otro sin levantar el dedo. **Doble toque**
+  rápido a un lado: dash.
 - **Mitad derecha**: chutar (bota, hacia dentro) y saltar (flecha, en el extremo). Va al botón
   que quede más cerca del dedo.
 - **Botón central**: el poder, cuando lo tienes.
@@ -47,32 +49,50 @@ siguiente.
 ## Los DJs
 
 Once caricaturas con nombres guiño a DJs conocidos (no se nombra a nadie, así que el APK se
-puede compartir). Cada uno pone su género, tiene un pequeño matiz de juego y su habilidad propia. Solo están los
-que se reconocen de un vistazo por algún rasgo (la calva, el flequillo, el pelo verde, la
-máscara): en el partido las cabezas son pequeñas y un DJ sin rasgo propio se confunde con otro. Se empieza con DJ Ludok; el resto se desbloquea con
-misiones.
+puede compartir). Cada uno pone su género y tiene su habilidad propia; arriba, en el partido,
+lleva la bandera de su país junto a su barra de power. Solo están los que se reconocen de un
+vistazo por algún rasgo (la calva, el flequillo, el pelo verde, la máscara): en el partido las
+cabezas son pequeñas y un DJ sin rasgo propio se confunde con otro. Se empieza con DJ Ludok; el
+resto se desbloquea ganándole en la escalera.
 
-| DJ | Música | Ventaja | Habilidad | Se desbloquea… |
-|---|---|---|---|---|
-| **DJ Ludok** | House · 124 | Tiro algo más fuerte | Scratch | desde el principio |
-| **Karl Box** | Techno · 130 | Tiro más fuerte | Bombo | ganando tu primer partido |
-| **Daft Funk** | French house · 124 | PERFECT más amplio | Modo robot | ganando en Peak Time o Closing |
-| **Deadmouse** | Progressive · 128 | Más rápido | Cabeza gigante | ganando sin encajar |
-| **Marsmelou** | Future bounce · 128 | Salta más | Nube | lanzando 3 poderes en un partido |
-| **Mis Monik** | Progressive house · 124 | Más rápido | Rayo | metiendo 6 PERFECT en un partido |
-| **Ritxie Hautin** | Minimal · 125 | PERFECT más amplio | Loop | ganando 3 partidos seguidos |
-| **Solomoon** | Melodic techno · 122 | PERFECT más amplio | Luna | ganando en Closing |
-| **Klaptone** | Deep house · 122 | Más rápido | Alas | con 10 victorias |
-| **Boris Brejtxa** | High-tech minimal · 126 | PERFECT más amplio | Bufón | ganando en Closing por 3 goles |
-| **I Hate Modems** | Techno industrial · 145 | Tiro más fuerte | Apagón | completando todas las demás |
+| Escalón | DJ | País | Música | Habilidad | IA |
+|---|---|---|---|---|---|
+| — | **DJ Ludok** (inicial) | Euskadi | House · 124 | Scratch | — |
+| 1 | **Karl Box** | Reino Unido | Techno · 130 | Bombo | Warm-up |
+| 2 | **Marsmelou** | EE. UU. | Future bounce · 128 | Nube | Warm-up |
+| 3 | **Ritxie Hautin** | Canadá | Minimal · 125 | Loop | Warm-up |
+| 4 | **Mis Monik** | Ucrania | Progressive house · 124 | Rayo | Peak Time |
+| 5 | **Deadmouse** | Canadá | Progressive · 128 | Cabeza gigante | Peak Time |
+| 6 | **Daft Funk** | Francia | French house · 124 | Modo robot | Peak Time |
+| 7 | **Solomoon** | Bosnia | Melodic techno · 122 | Luna | Peak Time |
+| 8 | **Klaptone** | Alemania | Deep house · 122 | Alas | Closing |
+| 9 | **Boris Brejtxa** | Alemania | High-tech minimal · 126 | Bufón | Closing |
+| 10 | **I Hate Modems** | Francia | Techno industrial · 145 | Apagón | Closing |
 
-Las misiones no se guardan aparte: se calculan a partir del historial de partidos. Así no hay
-dos cosas que puedan descuadrarse, y la copia de seguridad se lleva también el progreso. Los
-DJs bloqueados salen en silueta en la selección y en **Misiones**, y sí aparecen como rivales:
-así se les conoce antes de ganarlos.
+## La escalera, los logros y la tienda
 
-Nombres, colores, ventajas y géneros están en `src/content/djs.ts`; las bases, en
-`src/content/genres.ts`; las misiones, en `src/content/missions.ts`. Para que el poder salga al
+Como el arcade de Head Soccer:
+
+- **Escalera de rivales.** Se empieza con DJ Ludok y solo contra el primero; ganarle abre el
+  siguiente y lo desbloquea para jugar con él. La IA sube de nivel con la escalera (Warm-up,
+  Peak Time, Closing) y sus estadísticas también (las del escalón 1 a 10).
+- **Logros por rival** (ocho insignias contra cada uno): gana sin encajar, por 5 goles, con gol
+  de oro, sin usar tu habilidad, sin dash, sin chutar, sin saltar, y gánale 10 veces. Se ven en
+  la escalera, y durante el partido los de «sin…» se tachan en cuanto dejan de ser posibles.
+- **Monedas y tienda.** Cada partido da monedas (más ganando, más arriba en la escalera y por
+  cada logro nuevo). En la tienda se mejoran tus cinco estadísticas, de 0 a 10: velocidad,
+  tiro, salto, dash y power (lo rápido que se llena la barra). Son tuyas y valen con
+  cualquier DJ: los DJs se diferencian solo por su habilidad.
+
+Todo sale del historial de partidos (más las monedas y los niveles, en los ajustes), así que la
+copia de seguridad se lleva el progreso entero. El truco de las 7 pulsaciones en el título
+abre toda la escalera y todos los DJs, para probar.
+
+
+
+Nombres, colores, países y géneros están en `src/content/djs.ts`; las bases, en
+`src/content/genres.ts`; la escalera y los logros, en `src/content/ladder.ts`; las mejoras, en
+`src/game/upgrades.ts`. Para que el poder salga al
 azar en vez de ser el del DJ, `POWER.SIGNATURE` en `src/game/constants.ts`.
 
 ## Los escenarios
@@ -205,7 +225,7 @@ Los scripts de `verify/` ejecutan en el ordenador **el mismo código que corre e
 | `verify/beat.ts` | La cuenta del ritmo: a qué distancia del beat cae un toque, qué juicio le toca, que el tiro sale con su potencia, que el tempo sube y encoge las ventanas, y que el drop cae cuando dice la música |
 | `verify/powers.ts` | La barra de energía (solo la llenan los PERFECT) y las 14 habilidades, una por una: que se lanzan una vez por pulsación y que cada una hace lo que dice (el Muro para un tiro que era gol, la Cabeza gigante remata lo que la normal no alcanza, el Rayo no cae…) |
 | `verify/characters.ts` | Que cada DJ tiene su ventaja y su poder, que ninguno gana o pierde casi siempre (la IA contra sí misma con cada pareja de DJs), que todas las bases dejan el bombo en las negras y que lo que llega por la ruta se lee bien aunque venga roto |
-| `verify/missions.ts` | Cada misión contra historiales inventados: que se cumple justo cuando debe y no antes, que el orden de los partidos solo importa donde tiene que importar, y que un partido puede desbloquear varios DJs a la vez |
+| `verify/ladder.ts` | La escalera (cada victoria abre el siguiente escalón y desbloquea a ese DJ), los ocho logros por rival y las monedas, contra historiales inventados |
 | `verify/sequencer.ts` | La música, con un motor de audio de mentira que apunta qué se programa: bombos en los beats, tempo que cambia solo entre compases, drop en un beat y sin bombo ni bajo durante la subida |
 | `verify/ai.ts` | Enfrenta los niveles entre sí y contra un rival quieto: que están ordenados, que los altos rematan más al ritmo, que nunca se atascan y que no se meten goles en propia |
 | `verify/data.ts` | Ida y vuelta de la copia de seguridad contra un SQLite de escritorio: que nada se pierde ni se mezcla y que se rechaza lo que hay que rechazar |
@@ -227,7 +247,7 @@ Mostrar rendimiento**.
 ## Estructura
 
 ```
-app/                 Rutas (expo-router): menú, elegir, partido, resultado, misiones y ajustes.
+app/                 Rutas (expo-router): menú, elegir, partido, resultado, tienda y ajustes.
 src/game/            El juego en sí. Sin React, sin Skia, sin nada nativo.
   constants.ts       Toda la configuración de jugabilidad.
   types.ts           El estado del partido y el InputFrame.
@@ -246,7 +266,7 @@ src/audio/           La música y el reloj. Lo único que importa la librería d
 src/content/         Los DJs y los escenarios: nombres, ventajas, colores, decorado y música.
   djs.ts             Los once DJs.
   genres.ts          La música de cada DJ, con su tempo.
-  missions.ts        Las misiones que desbloquean DJs.
+  ladder.ts          La escalera de rivales y los logros.
   stages.ts          Los tres escenarios.
   setup.ts           Lo que define un partido, de ida y vuelta por la ruta.
 src/render/          Cómo se ve. Todo pintado por código con Skia.

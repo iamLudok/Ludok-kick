@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS matches (
   goods INTEGER NOT NULL DEFAULT 0,
   powers INTEGER,
   bestStreak INTEGER,
+  kicks INTEGER,
+  jumps INTEGER,
+  dashes INTEGER,
+  coins INTEGER,
   level TEXT,
   dj TEXT,
   rivalDj TEXT,
@@ -31,6 +35,12 @@ CREATE TABLE IF NOT EXISTS settings (
   lastLevel TEXT,
   showPerf INTEGER,
   unlockAll INTEGER,
+  coins INTEGER NOT NULL DEFAULT 0,
+  upSpeed INTEGER NOT NULL DEFAULT 0,
+  upKick INTEGER NOT NULL DEFAULT 0,
+  upJump INTEGER NOT NULL DEFAULT 0,
+  upDash INTEGER NOT NULL DEFAULT 0,
+  upPower INTEGER NOT NULL DEFAULT 0,
   lastBackup INTEGER NOT NULL DEFAULT 0,
   schemaVersion INTEGER NOT NULL
 );
@@ -57,6 +67,17 @@ export const MIGRATIONS: string[] = [
    ALTER TABLE matches ADD COLUMN bestStreak INTEGER;`,
   // v3 → v4: el modo prueba que desbloquea todos los DJs.
   `ALTER TABLE settings ADD COLUMN unlockAll INTEGER;`,
+  // v4 → v5: monedas, mejoras y lo que necesitan los logros por rival.
+  `ALTER TABLE settings ADD COLUMN coins INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE settings ADD COLUMN upSpeed INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE settings ADD COLUMN upKick INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE settings ADD COLUMN upJump INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE settings ADD COLUMN upDash INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE settings ADD COLUMN upPower INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE matches ADD COLUMN kicks INTEGER;
+   ALTER TABLE matches ADD COLUMN jumps INTEGER;
+   ALTER TABLE matches ADD COLUMN dashes INTEGER;
+   ALTER TABLE matches ADD COLUMN coins INTEGER;`,
 ]
 
 /** Versión del esquema de SQLite. NO es la del formato de copia (`version.ts`). */

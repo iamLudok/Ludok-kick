@@ -40,6 +40,8 @@ export type AiState = {
   powerT: number
   /** En esta decisión, ¿espera al momento bueno para el poder? */
   powerSmart: boolean
+  /** Ha decidido llegar con un dash. */
+  dashWant: boolean
   out: InputFrame
 }
 
@@ -59,7 +61,8 @@ export function createAi(level: Level, seed: number): AiState {
     stillT: 0,
     powerT: 0,
     powerSmart: false,
-    out: { move: 0, jump: false, kick: false, power: false },
+    dashWant: false,
+    out: { move: 0, jump: false, kick: false, power: false, dash: 0 },
   }
 }
 
@@ -186,6 +189,8 @@ function think(ai: AiState, s: GameState, side: Side): void {
   if (ai.stillT > AI.STALL) target = b.x
 
   ai.targetX = Math.max(PLAYER.MIN_X, Math.min(FIELD.W - PLAYER.MIN_X, target))
+  // Lejos de donde quiere estar: a veces llega con un dash, como haría alguien con prisa.
+  ai.dashWant = Math.abs(ai.targetX - p.x) > 260 && rand(ai) < L.dashUse
 }
 
 /**
@@ -241,6 +246,7 @@ export function stepAi(ai: AiState, s: GameState, side: Side, frameDt: number): 
   out.jump = false
   out.kick = false
   out.power = false
+  out.dash = 0
   if (s.phase !== 'play') {
     // Tras cada gol empieza de cero: lo que pensaba ya no vale.
     ai.thinkT = 0
@@ -271,6 +277,13 @@ export function stepAi(ai: AiState, s: GameState, side: Side, frameDt: number): 
 
   const diff = ai.targetX - p.x
   if (Math.abs(diff) > 7) out.move = Math.sign(diff) * L.speed
+  // Nunca con el vinilo en medio del camino: lo arrollaba a toda velocidad, a
+  // menudo hacia su propia portería.
+  const ballInWay = (b.x - p.x) * Math.sign(diff) > 0 && (b.x - p.x) * Math.sign(diff) < Math.abs(diff) + 40
+  if (ai.dashWant && p.dashCd <= 0 && Math.abs(diff) > 180 && !ballInWay) {
+    out.dash = Math.sign(diff)
+    ai.dashWant = false
+  }
 
   // Posición del vinilo respecto al jugador: `ahead` es cuánto lo tiene por
   // delante y `up` a qué altura sobre sus pies.

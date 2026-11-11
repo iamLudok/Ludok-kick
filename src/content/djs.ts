@@ -4,11 +4,11 @@
  * interfaz ni en ninguna parte): el guiño se entiende solo, y así el APK se
  * puede compartir sin usar el nombre de nadie.
  *
- * Cada uno pone su música (su género, a su tempo), tiene un pequeño matiz de
- * juego y su poder propio. Todo lo que distingue a un DJ está aquí: para
+ * Cada uno pone su música (su género, a su tempo) y tiene su habilidad
+ * propia. Las estadísticas no son del DJ sino tuyas (ver `src/game/upgrades.ts`). Todo lo que distingue a un DJ está aquí: para
  * cambiar un nombre, un color o un número no hay que tocar nada más.
  */
-import type { PlayerStats } from '../game/types'
+import type { PowerKind } from '../game/types'
 import type { GenreId } from './genres'
 
 export type DjId =
@@ -67,13 +67,15 @@ export type Dj = {
   id: DjId
   name: string
   genre: GenreId
-  /** La ventaja en una frase; vacío si no tiene. */
-  perk: string
-  stats: PlayerStats
+  /** Su habilidad. Es lo único de juego que distingue a un DJ: las estadísticas son tuyas. */
+  power: PowerKind
+  /** De dónde es, para la bandera del marcador. */
+  origin: Country
   look: DjLook
 }
 
-const BASE = { speed: 1, jump: 1, kick: 1, timing: 1 }
+/** Países de origen, con bandera dibujada en `src/ui/Flag.tsx`. */
+export type Country = 'eus' | 'gb' | 'fr' | 'ca' | 'us' | 'ua' | 'ba' | 'de'
 
 const look = (l: Partial<DjLook> & Pick<DjLook, 'jersey'>): DjLook => ({
   skin: '#f2c8a0',
@@ -96,88 +98,88 @@ export const DJS: Dj[] = [
     id: 'ludok',
     name: 'DJ Ludok',
     genre: 'house',
-    perk: 'Tiro algo más fuerte',
-    stats: { ...BASE, kick: 1.06, power: 'scratch' },
+    power: 'scratch',
+    origin: 'eus',
     look: look({ jersey: '#7A45C4', hair: 'hood', accent: '#7A45C4', mouth: 'grin', brows: 'raised' }),
   },
   {
     id: 'karl',
     name: 'Karl Box',
     genre: 'techno',
-    perk: 'Tiro más fuerte',
-    stats: { ...BASE, kick: 1.12, power: 'stomp' },
+    power: 'stomp',
+    origin: 'gb',
     look: look({ jersey: '#1d1d24', skin: '#5e3a28', hair: 'bald', mouth: 'grin', brows: 'raised' }),
   },
   {
     id: 'daft',
     name: 'Daft Funk',
     genre: 'french',
-    perk: 'Ventana PERFECT más amplia',
-    stats: { ...BASE, timing: 1.25, power: 'robot' },
+    power: 'robot',
+    origin: 'fr',
     look: look({ jersey: '#2b2b33', mask: 'robot', accent: '#d9b44a' }),
   },
   {
     id: 'deadmouse',
     name: 'Deadmouse',
     genre: 'progressive',
-    perk: 'Corre más rápido',
-    stats: { ...BASE, speed: 1.06, power: 'bighead' },
+    power: 'bighead',
+    origin: 'ca',
     look: look({ jersey: '#f3f1ec', mask: 'mouse', accent: '#2a6fbf' }),
   },
   {
     id: 'marsmelou',
     name: 'Marsmelou',
     genre: 'bounce',
-    perk: 'Salta más alto',
-    stats: { ...BASE, jump: 1.08, power: 'cloud' },
+    power: 'cloud',
+    origin: 'us',
     look: look({ jersey: '#f3f1ec', mask: 'marsh', accent: '#ffffff' }),
   },
   {
     id: 'mismonik',
     name: 'Mis Monik',
     genre: 'proghouse',
-    perk: 'Corre más rápido',
-    stats: { ...BASE, speed: 1.06, power: 'laser' },
+    power: 'laser',
+    origin: 'ua',
     look: look({ jersey: '#141218', skin: '#f3d3bd', hairColor: '#4a3426', hair: 'bobCenter', streaks: '#7cff3a', mouth: 'smile' }),
   },
   {
     id: 'ritxie',
     name: 'Ritxie Hautin',
     genre: 'minimal',
-    perk: 'Ventana PERFECT más amplia',
-    stats: { ...BASE, timing: 1.25, power: 'loop' },
+    power: 'loop',
+    origin: 'ca',
     look: look({ jersey: '#6b6b66', hairColor: '#e8b84a', hair: 'fringe', facialHair: 'stubble', brows: 'flat' }),
   },
   {
     id: 'solomoon',
     name: 'Solomoon',
     genre: 'melodic',
-    perk: 'Ventana PERFECT más amplia',
-    stats: { ...BASE, timing: 1.25, power: 'moon' },
+    power: 'moon',
+    origin: 'ba',
     look: look({ jersey: '#b49a7a', skin: '#e2b48e', hairColor: '#6b5236', hair: 'longCenter', facialHair: 'beard', brows: 'frown' }),
   },
   {
     id: 'klaptone',
     name: 'Klaptone',
     genre: 'deep',
-    perk: 'Corre más rápido',
-    stats: { ...BASE, speed: 1.06, power: 'wings' },
+    power: 'wings',
+    origin: 'de',
     look: look({ jersey: '#1d1d24', hairColor: '#1a1410', hair: 'short', facialHair: 'beard', mask: 'beak', hat: 'tophat', accent: '#e0b84a' }),
   },
   {
     id: 'boris',
     name: 'Boris Brejtxa',
     genre: 'hightech',
-    perk: 'Ventana PERFECT más amplia',
-    stats: { ...BASE, timing: 1.2, power: 'jester' },
+    power: 'jester',
+    origin: 'de',
     look: look({ jersey: '#1d1d24', mask: 'jester', accent: '#2f7fb0' }),
   },
   {
     id: 'ihm',
     name: 'I Hate Modems',
     genre: 'industrial',
-    perk: 'Tiro más fuerte',
-    stats: { ...BASE, kick: 1.08, power: 'blackout' },
+    power: 'blackout',
+    origin: 'fr',
     look: look({ jersey: '#0e0e12', hairColor: '#4a4e58', hair: 'messy', mask: 'buff', accent: '#15151a', brows: 'frown' }),
   },
 ]

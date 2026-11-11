@@ -83,6 +83,17 @@ export const PLAYER = {
   PUSH: 0.6,
 }
 
+/** El dash: doble toque rápido a un lado para un desplazamiento largo. */
+export const DASH = {
+  /** Velocidad durante el dash, en veces la velocidad normal. */
+  SPEED: 2.6,
+  /** Lo que dura y lo que hay que esperar para el siguiente. */
+  TIME: 0.16,
+  COOLDOWN: 0.7,
+  /** Lo máximo entre los dos toques para que cuente como doble toque, en segundos. */
+  DOUBLE_TAP: 0.28,
+}
+
 export const HEADER = {
   RESTITUTION: 0.5,
   /** Empujón extra en la dirección del golpe: hace que cabecear «pegue». */
@@ -185,6 +196,8 @@ export const AI = {
      */
     powerIQ: 0.3,
     powerPatience: 12,
+    /** Probabilidad de hacer dash cuando tiene que cubrir mucha distancia. */
+    dashUse: 0.2,
   },
   /** Peak Time: un rival decente. */
   peak: {
@@ -200,6 +213,8 @@ export const AI = {
     pressure: 0.35,
     powerIQ: 0.65,
     powerPatience: 9,
+    /** Probabilidad de hacer dash cuando tiene que cubrir mucha distancia. */
+    dashUse: 0.5,
   },
   /** Closing: reacciona rápido, falla poco y busca el beat casi siempre. */
   closing: {
@@ -215,6 +230,8 @@ export const AI = {
     pressure: 0.45,
     powerIQ: 0.95,
     powerPatience: 6,
+    /** Probabilidad de hacer dash cuando tiene que cubrir mucha distancia. */
+    dashUse: 0.5,
   },
   /** Dónde espera cuando no va a por el vinilo: distancia a su propia pared. */
   HOME_X: 240,
@@ -257,7 +274,7 @@ export const POWER = {
   HYPE_JUMP: 1.4,
   HYPE_TIME: 5,
   /** Modo robot (Daft Funk): cuánto se queda congelado el rival. */
-  ROBOT_TIME: 1.5,
+  ROBOT_TIME: 1.2,
   /** Cabeza gigante (Deadmouse). */
   BIG_SCALE: 1.5,
   BIG_TIME: 5,
@@ -275,9 +292,9 @@ export const POWER = {
   MOON_TIME: 5,
   /** Alas (Klaptone): planea cayendo a esta fracción de la gravedad. */
   WINGS_GRAVITY: 0.4,
-  WINGS_TIME: 5,
+  WINGS_TIME: 7,
   /** Bufón (Boris Brejtxa): cuánto tiene el rival los controles cambiados. */
-  JESTER_TIME: 3,
+  JESTER_TIME: 2,
   /** Apagón (I Hate Modems): cuánto se queda el rival sin energía ni poderes. */
   BLACKOUT_TIME: 6,
 }

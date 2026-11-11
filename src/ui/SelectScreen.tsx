@@ -3,59 +3,66 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { playUi } from '../audio/ui'
-import { DJS, STARTER, getDj, isDjId, pickRival, type DjId } from '../content/djs'
+import { DJS, STARTER, getDj, isDjId, type DjId } from '../content/djs'
 import { getGenre } from '../content/genres'
-import { missionFor } from '../content/missions'
+import { BADGES, LADDER, badgesAgainst, levelOfRung } from '../content/ladder'
 import { setupParams } from '../content/setup'
 import { STAGES, isStageId, type StageId } from '../content/stages'
-import { POWER } from '../game/constants'
-import { useLevelTallies, useUnlocks } from '../hooks/useHistory'
+import { useLadder } from '../hooks/useHistory'
 import { useSettings } from '../hooks/useSettings'
-import { LEVELS, type Level } from '../types'
 import { DjPortrait, StagePreview } from './Art'
+import { BadgeIcon } from './BadgeIcon'
 import { Button } from './Button'
-import { LEVEL_HINT, LEVEL_NAME, POWER_HINT, POWER_NAME, djNameColor } from './labels'
+import { Flag } from './Flag'
+import { LEVEL_NAME, POWER_HINT, POWER_NAME, djNameColor } from './labels'
 import { Txt } from './Text'
 import { palette, radius, space } from './theme'
 
 /**
- * Elegir DJ, escenario y nivel. Los DJs bloqueados se ven en silueta, con la
- * misión que los desbloquea; el rival sale al azar entre los demás (también
- * entre los bloqueados: así se les conoce antes de ganarlos).
+ * Elegir tu DJ, el rival y el escenario. Los rivales van en escalera (como el
+ * arcade de Head Soccer): hay que ganar a uno para poder jugar contra el
+ * siguiente, y ganarle a un DJ lo desbloquea para jugar con él. Cada rival
+ * enseña sus logros: los conseguidos, en dorado.
  */
 export function SelectScreen() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { data: settings, ready } = useSettings()
-  const { data: tallies, ready: talliesReady } = useLevelTallies()
-  const { unlocked, history } = useUnlocks()
+  const { ladder, history } = useLadder()
   const [dj, setDj] = useState<DjId>(STARTER)
+  const [rival, setRival] = useState<DjId>(LADDER[0])
   const [stage, setStage] = useState<StageId>(STAGES[0].id)
-  const [level, setLevel] = useState<Level>('warmup')
 
-  // En cuanto la base responde, se propone lo último que se jugó.
+  // En cuanto la base responde, se propone lo último que se jugó y el rival
+  // más alto que esté abierto.
   useEffect(() => {
     if (!ready) return
     if (isDjId(settings.lastDj)) setDj(settings.lastDj)
     if (isStageId(settings.lastStage)) setStage(settings.lastStage)
-    if (settings.lastLevel) setLevel(settings.lastLevel)
-  }, [ready, settings.lastDj, settings.lastLevel, settings.lastStage])
+  }, [ready, settings.lastDj, settings.lastStage])
+  useEffect(() => {
+    setRival(LADDER[Math.max(0, ladder.open - 1)])
+  }, [ladder.open])
 
   const chosen = getDj(dj)
-  const locked = !unlocked.has(dj)
-  const mission = missionFor(dj)
+  const mineLocked = !ladder.playable.has(dj)
+  const rivalOpen = LADDER.indexOf(rival) < ladder.open
+  // Contra uno mismo no se juega: dos muñecos iguales en el campo no se distinguen.
+  const sameDj = rival === dj
+  const canPlay = !mineLocked && rivalOpen && !sameDj
   const genre = getGenre(chosen.genre)
-  const power = chosen.stats.power
 
   const play = () => {
-    if (locked) return
-    router.push({ pathname: '/partido', params: setupParams({ dj, rival: pickRival(dj), stage, level }) })
+    if (!canPlay) return
+    router.push({ pathname: '/partido', params: setupParams({ dj, rival, stage }) })
   }
 
   const pick = <T,>(set: (v: T) => void, v: T) => {
     playUi('select')
     set(v)
   }
+
+  const reason = mineLocked ? 'Tu DJ está bloqueado' : !rivalOpen ? 'Rival bloqueado' : sameDj ? 'Elige otro rival' : ''
 
   return (
     <View
@@ -69,152 +76,110 @@ export function SelectScreen() {
         <Txt variant="title" style={styles.grow}>
           Elige tu sesión
         </Txt>
-        <Txt variant="data" tone="muted">
-          {unlocked.size} / {DJS.length} DJs
-        </Txt>
-        <Button
-          title={locked ? 'Bloqueado' : '¡A la cabina!'}
-          onPress={play}
-          style={[styles.small, locked && styles.disabled]}
-        />
+        {reason !== '' && (
+          <Txt variant="data" tone="muted">
+            {reason}
+          </Txt>
+        )}
+        <Button title="¡A la cabina!" onPress={play} style={[styles.small, !canPlay && styles.off]} />
       </View>
 
-      <View style={styles.body}>
-        {/* El DJ elegido, en grande, con su ficha. */}
-        <View style={[styles.card, styles.detail]}>
-          <DjPortrait dj={chosen} size={112} locked={locked} />
-          {locked ? (
-            <>
-              <Txt variant="body" tone="muted">
-                DJ bloqueado
-              </Txt>
-              {mission && (
-                <>
-                  <Txt variant="body" style={styles.center}>
-                    {mission.title}
-                  </Txt>
-                  <Txt variant="data" tone="brand">
-                    {Math.min(mission.progress(history), mission.target)} / {mission.target}
-                  </Txt>
-                </>
-              )}
-            </>
+      {/* Tu DJ: los que tienes, y en silueta los que faltan por ganar. */}
+      <View style={styles.mine}>
+        <View style={styles.faces}>
+          {DJS.map((d) => {
+            const locked = !ladder.playable.has(d.id)
+            return (
+              <Pressable
+                key={d.id}
+                onPress={() => pick(setDj, d.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: d.id === dj }}
+                accessibilityLabel={locked ? 'DJ bloqueado' : d.name}
+                style={[styles.face, d.id === dj && styles.selected]}
+              >
+                <DjPortrait dj={d} size={46} locked={locked} />
+              </Pressable>
+            )
+          })}
+        </View>
+        <View style={styles.mineText}>
+          {mineLocked ? (
+            <Txt variant="body" tone="muted">
+              Gánale en la escalera para jugar con él
+            </Txt>
           ) : (
             <>
-              <Txt variant="title" style={{ color: djNameColor(chosen.look.jersey, palette.fg) }}>
-                {chosen.name}
-              </Txt>
-              <Txt variant="data" tone="muted">
-                {genre.name} · {genre.bpm} BPM
-              </Txt>
-              <StatBars dj={chosen} />
-              {POWER.SIGNATURE && power && (
-                <Txt variant="data" tone="brand" style={styles.center}>
-                  {POWER_NAME[power]}: {POWER_HINT[power]}
+              <View style={styles.nameRow}>
+                <Flag country={chosen.origin} height={14} />
+                <Txt variant="body" style={{ color: djNameColor(chosen.look.jersey, palette.fg) }}>
+                  {chosen.name}
                 </Txt>
-              )}
+                <Txt variant="data" tone="muted">
+                  {genre.name} · {genre.bpm} BPM
+                </Txt>
+              </View>
+              <Txt variant="data" tone="brand">
+                {POWER_NAME[chosen.power]}: {POWER_HINT[chosen.power]}
+              </Txt>
             </>
           )}
         </View>
-
-        <View style={styles.right}>
-          {/* Todos los DJs, en caras pequeñas: dos filas de siete. */}
-          <View style={styles.grid}>
-            {DJS.map((d) => {
-              const selected = d.id === dj
-              const isLocked = !unlocked.has(d.id)
-              return (
-                <Pressable
-                  key={d.id}
-                  onPress={() => pick(setDj, d.id)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={isLocked ? 'DJ bloqueado' : d.name}
-                  style={[styles.face, selected && styles.selected]}
-                >
-                  <DjPortrait dj={d} size={FACE} locked={isLocked} />
-                </Pressable>
-              )
-            })}
-          </View>
-
-          <View style={styles.row}>
-            {STAGES.map((s) => {
-              const selected = s.id === stage
-              return (
-                <Pressable
-                  key={s.id}
-                  onPress={() => pick(setStage, s.id)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  style={[styles.card, styles.stage, selected && styles.selected]}
-                >
-                  <View style={styles.preview}>
-                    <StagePreview stage={s} width={PREVIEW_W} height={PREVIEW_H} />
-                  </View>
-                  <Txt variant="data" numberOfLines={1}>
-                    {s.name} · {s.place}
-                  </Txt>
-                </Pressable>
-              )
-            })}
-          </View>
-
-          <View style={styles.row}>
-            {LEVELS.map((l) => {
-              const t = tallies[l]
-              const selected = l === level
-              return (
-                <Pressable
-                  key={l}
-                  onPress={() => pick(setLevel, l)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  style={[styles.card, styles.level, selected && styles.selected]}
-                >
-                  <Txt variant="body">{LEVEL_NAME[l]}</Txt>
-                  <Txt variant="data" tone="muted">
-                    {talliesReady && t.played > 0 ? `${t.won} G · ${t.drawn} E · ${t.lost} P` : LEVEL_HINT[l]}
-                  </Txt>
-                </Pressable>
-              )
-            })}
-          </View>
-        </View>
       </View>
-    </View>
-  )
-}
 
-/** Tamaño de cada cara de la cuadrícula y de las vistas previas de escenario. */
-const FACE = 68
-const PREVIEW_W = 128
-const PREVIEW_H = 54
+      {/* La escalera de rivales. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.ladder}>
+        {LADDER.map((id, rung) => {
+          const d = getDj(id)
+          const open = rung < ladder.open
+          const earned = badgesAgainst(history, id)
+          return (
+            <Pressable
+              key={id}
+              onPress={() => pick(setRival, id)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: id === rival }}
+              accessibilityLabel={open ? d.name : 'Rival bloqueado'}
+              style={[styles.rung, id === rival && styles.selected, !open && styles.closed]}
+            >
+              <Txt variant="label" tone="muted">
+                {rung + 1} · {LEVEL_NAME[levelOfRung(rung)]}
+              </Txt>
+              <DjPortrait dj={d} size={58} locked={!open} />
+              <View style={styles.nameRow}>
+                {open && <Flag country={d.origin} height={11} />}
+                <Txt variant="data" numberOfLines={1} tone={open ? 'fg' : 'muted'}>
+                  {open ? d.name : '???'}
+                </Txt>
+              </View>
+              <View style={styles.badges}>
+                {BADGES.map((b) => (
+                  <BadgeIcon key={b.id} id={b.id} size={13} earned={earned.has(b.id)} />
+                ))}
+              </View>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
 
-/**
- * Las ventajas del DJ como barras, de 1 a 5: 3 es lo normal. Se lee de un
- * vistazo mejor que una frase, y deja ver que las diferencias son pequeñas.
- */
-function StatBars({ dj }: { dj: ReturnType<typeof getDj> }) {
-  const st = dj.stats
-  const rows: [string, number][] = [
-    ['Velocidad', 3 + Math.round((st.speed - 1) / 0.04)],
-    ['Tiro', 3 + Math.round((st.kick - 1) / 0.06)],
-    ['Salto', 3 + Math.round((st.jump - 1) / 0.04)],
-    ['Precisión', 3 + Math.round((st.timing - 1) / 0.12)],
-  ]
-  return (
-    <View style={styles.stats}>
-      {rows.map(([label, value]) => (
-        <View key={label} style={styles.statRow}>
-          <Txt variant="data" tone="muted" style={styles.statLabel}>
-            {label}
-          </Txt>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <View key={i} style={[styles.pip, i <= Math.min(5, value) && styles.pipOn]} />
-          ))}
-        </View>
-      ))}
+      <View style={styles.stages}>
+        {STAGES.map((s) => (
+          <Pressable
+            key={s.id}
+            onPress={() => pick(setStage, s.id)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: s.id === stage }}
+            style={[styles.stage, s.id === stage && styles.selected]}
+          >
+            <View style={styles.preview}>
+              <StagePreview stage={s} width={86} height={36} />
+            </View>
+            <Txt variant="data" numberOfLines={1}>
+              {s.name}
+            </Txt>
+          </Pressable>
+        ))}
+      </View>
     </View>
   )
 }
@@ -224,29 +189,37 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
   grow: { flex: 1 },
   small: { minWidth: 0, minHeight: 44, paddingVertical: space.sm, paddingHorizontal: space.lg },
-  disabled: { opacity: 0.4 },
-  center: { textAlign: 'center' },
-  body: { flex: 1, flexDirection: 'row', gap: space.md },
-  card: {
+  off: { opacity: 0.4 },
+  selected: { borderColor: palette.brand },
+  mine: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  faces: { flexDirection: 'row', gap: 4 },
+  face: { borderRadius: radius.md, borderWidth: 2, borderColor: palette.line, backgroundColor: palette.surface },
+  mineText: { flex: 1, gap: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  ladder: { gap: space.sm },
+  rung: {
+    width: 116,
+    alignItems: 'center',
+    gap: 2,
+    padding: space.xs,
     borderRadius: radius.lg,
     borderWidth: 2,
     borderColor: palette.line,
     backgroundColor: palette.surface,
-    padding: space.sm,
   },
-  selected: { borderColor: palette.brand },
-  detail: { width: 220, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  right: { flex: 1, gap: space.sm },
-  // Seis por fila: los 11 DJs en dos filas casi iguales.
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, maxWidth: 6 * (FACE + 4) + 5 * space.xs },
-  face: { borderRadius: radius.md, borderWidth: 2, borderColor: palette.line, backgroundColor: palette.surface },
-  row: { flexDirection: 'row', gap: space.sm },
-  stage: { flex: 1, alignItems: 'center', gap: space.xs },
-  preview: { borderRadius: radius.md, overflow: 'hidden' },
-  stats: { gap: 3, marginVertical: space.xs },
-  statRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  statLabel: { width: 64 },
-  pip: { width: 14, height: 7, borderRadius: 2, backgroundColor: palette.line },
-  pipOn: { backgroundColor: palette.brand },
-  level: { flex: 1, justifyContent: 'center', paddingHorizontal: space.md, paddingVertical: space.xs },
+  closed: { opacity: 0.6 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 3, width: 70 },
+  stages: { flexDirection: 'row', gap: space.sm },
+  stage: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    padding: space.xs,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: palette.line,
+    backgroundColor: palette.surface,
+  },
+  preview: { borderRadius: radius.sm, overflow: 'hidden' },
 })

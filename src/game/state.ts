@@ -1,11 +1,11 @@
 import { BALL, BEAT, FIELD, MATCH, PLAYER } from './constants'
 import type { GameState, InputFrame, PlayerState, PlayerStats, Side } from './types'
 
-export const BASE_STATS: PlayerStats = { speed: 1, jump: 1, kick: 1, timing: 1, power: null }
+export const BASE_STATS: PlayerStats = { speed: 1, jump: 1, kick: 1, dash: 1, charge: 1, timing: 1, power: null }
 
 export function emptyInput(): InputFrame {
   'worklet'
-  return { move: 0, jump: false, kick: false, power: false }
+  return { move: 0, jump: false, kick: false, power: false, dash: 0 }
 }
 
 export function startX(side: Side): number {
@@ -29,7 +29,15 @@ function createPlayer(side: Side, stats: PlayerStats): PlayerState {
     touchCd: 0,
     // Copia: el estado se muta en cada paso y no debe compartir objeto con la
     // ficha del personaje.
-    stats: { speed: stats.speed, jump: stats.jump, kick: stats.kick, timing: stats.timing, power: stats.power },
+    stats: {
+      speed: stats.speed,
+      jump: stats.jump,
+      kick: stats.kick,
+      dash: stats.dash,
+      charge: stats.charge,
+      timing: stats.timing,
+      power: stats.power,
+    },
     energy: 0,
     power: null,
     powerHeld: false,
@@ -43,6 +51,9 @@ function createPlayer(side: Side, stats: PlayerStats): PlayerState {
     invertT: 0,
     blackoutT: 0,
     laser: false,
+    dashT: 0,
+    dashCd: 0,
+    dashDir: 0,
   }
 }
 
@@ -100,6 +111,8 @@ export function resetForKickoff(s: GameState): void {
     p.wingsT = 0
     p.invertT = 0
     p.blackoutT = 0
+    p.dashT = 0
+    p.dashCd = 0
   }
   s.moonT = 0
   s.wallT = 0

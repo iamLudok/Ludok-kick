@@ -10,7 +10,7 @@
  * que en un juego se notan como tirones.
  */
 import { beatDelta, judgeDelta, judgePower } from './beat'
-import { BALL, BODY, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, POWER, SHOCK, SIM } from './constants'
+import { BALL, BODY, DASH, FIELD, GOAL, HEADER, KICK, MATCH, PLAYER, POWER, SHOCK, SIM } from './constants'
 import { nextRandom } from './rng'
 import { emptyInput, resetForKickoff } from './state'
 import { POWER_KINDS, type Contact, type GameState, type InputFrame, type Judge, type PlayerState, type Side } from './types'
@@ -124,10 +124,24 @@ function clampPlayerX(p: PlayerState): boolean {
 
 function updatePlayer(s: GameState, p: PlayerState, inp: InputFrame, dt: number): void {
   'worklet'
-  // Bufón del rival: izquierda y derecha, al revés.
-  const move = p.invertT > 0 ? -inp.move : inp.move
-  const target = clamp(move, -1, 1) * PLAYER.SPEED * p.stats.speed
-  p.vx = approach(p.vx, target, (p.grounded ? PLAYER.ACCEL : PLAYER.AIR_ACCEL) * dt)
+  // Bufón del rival: izquierda y derecha, al revés (también el dash).
+  const flip = p.invertT > 0 ? -1 : 1
+  const move = inp.move * flip
+  if (inp.dash !== 0 && p.dashCd <= 0 && p.dashT <= 0) {
+    p.dashT = DASH.TIME
+    p.dashDir = Math.sign(inp.dash) * flip
+    p.dashCd = DASH.COOLDOWN
+    s.events.push({ type: 'dash', side: p.side })
+  }
+  if (p.dashT > 0) {
+    // Durante el dash la velocidad es fija: no se acelera ni se frena.
+    p.dashT -= dt
+    p.vx = p.dashDir * PLAYER.SPEED * DASH.SPEED * p.stats.dash
+  } else {
+    const target = clamp(move, -1, 1) * PLAYER.SPEED * p.stats.speed
+    p.vx = approach(p.vx, target, (p.grounded ? PLAYER.ACCEL : PLAYER.AIR_ACCEL) * dt)
+  }
+  if (p.dashCd > 0) p.dashCd -= dt
 
   const jumpV = PLAYER.JUMP_V * p.stats.jump * (p.hypeT > 0 ? POWER.HYPE_JUMP : 1)
   // Con el botón mantenido vuelve a saltar nada más aterrizar: así no hay que
@@ -136,6 +150,7 @@ function updatePlayer(s: GameState, p: PlayerState, inp: InputFrame, dt: number)
     p.vy = -jumpV
     p.grounded = false
     p.wingJump = p.wingsT > 0
+    s.events.push({ type: 'jump', side: p.side })
   } else if (inp.jump && p.wingJump && p.vy > 0) {
     // Alas: un segundo salto en el aire, ya cayendo.
     p.vy = -jumpV * 0.85
@@ -180,6 +195,7 @@ function updatePlayer(s: GameState, p: PlayerState, inp: InputFrame, dt: number)
     if (inp.kick && p.kickCd <= 0) {
       p.kickT = 0
       p.kickHit = false
+      s.events.push({ type: 'swing', side: p.side })
     }
   }
 }
@@ -351,7 +367,7 @@ function onTouch(s: GameState, p: PlayerState, judge: Judge): void {
   }
   // Bajo un Apagón del rival no se carga energía.
   if (judge === 2 && p.power === null && p.blackoutT <= 0) {
-    p.energy = Math.min(1, p.energy + POWER.PER_PERFECT)
+    p.energy = Math.min(1, p.energy + POWER.PER_PERFECT * p.stats.charge)
     if (p.energy >= 1) {
       // El poder propio del DJ, o uno al azar si no tiene (o si se juega así).
       const own = POWER.SIGNATURE ? p.stats.power : null

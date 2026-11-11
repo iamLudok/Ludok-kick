@@ -15,16 +15,21 @@ import { createInitialState, emptyInput } from '../game/state'
 import { stepGame, type BeatInput } from '../game/step'
 import type { GameState, InputFrame, Phase } from '../game/types'
 import { addMatch, allMatches } from '../lib/matches'
-import { newlyUnlocked } from '../content/missions'
+import { addCoins, coinsFor, levelsOf } from '../lib/progress'
+import { rungOf, statLevelOfRung, unlockedBy } from '../content/ladder'
+import { evenLevels, statsFor } from '../game/upgrades'
 import { useSettings } from '../hooks/useSettings'
 import { effectiveOffsetMs, updateSettings } from '../lib/settings'
 import { burst, createPool, PC, updateParticles } from '../render/particles'
 import { FX_LIFE, SHOCK_LIFE, createPainter, drawFrame, judgeLabel, powerLabel, type BeatView } from '../render/draw'
 import { getDj, type DjId } from '../content/djs'
-import { readSetup, resultParams, setupParams, type MatchResult, type MatchSetup } from '../content/setup'
+import { levelOf, readSetup, resultParams, setupParams, type MatchResult, type MatchSetup } from '../content/setup'
 import { getGenre } from '../content/genres'
 import { getStage } from '../content/stages'
 import { DjPortrait } from './Art'
+import { BadgeIcon } from './BadgeIcon'
+import { Flag } from './Flag'
+import type { BadgeId } from '../content/ladder'
 import { Txt } from './Text'
 import { TouchControls } from './TouchControls'
 import { djNameColor } from './labels'
@@ -42,6 +47,11 @@ type HudData = {
   /** Energía de cada uno (0–1); llena es que tiene un poder listo. */
   energy0: number
   energy1: number
+  /**
+   * Los logros de «gana sin…» que ya no se pueden conseguir en este partido,
+   * como bits: 1 encajó, 2 habilidad, 4 dash, 8 chut, 16 salto.
+   */
+  spoiled: number
 }
 
 const INITIAL_HUD: HudData = {
@@ -53,6 +63,7 @@ const INITIAL_HUD: HudData = {
   bpm: 0,
   energy0: 0,
   energy1: 0,
+  spoiled: 0,
 }
 
 /** El drop que ha preparado la música para el gol número `goal` del partido. */
@@ -70,6 +81,10 @@ type Runtime = {
   perfects: number
   goods: number
   powers: number
+  /** Lo que hizo el jugador: para los logros de «gana sin…». */
+  kicks: number
+  jumps: number
+  dashes: number
   /** Racha de PERFECT seguidos en curso y la mejor del partido. */
   streak: number
   bestStreak: number
@@ -84,6 +99,9 @@ type Runtime = {
 }
 
 /** Lo que se guarda en el historial al acabar. */
+/** Lo que manda el bucle del juego al acabar: el resultado sin lo que se calcula después (monedas, desbloqueos). */
+type Final = Omit<MatchResult, 'coins' | 'newDjs' | 'newBadges'> & { kicks: number; jumps: number; dashes: number }
+
 /** Lo que dura la presentación «VS» antes de cada partido (se salta tocando). */
 const VS_MS = 2200
 
@@ -130,7 +148,8 @@ export function MatchScreen() {
 
 function Match({ width, height, insetX, setup }: { width: number; height: number; insetX: number; setup: MatchSetup }) {
   const router = useRouter()
-  const level = setup.level
+  const level = levelOf(setup)
+  const rung = rungOf(setup.rival)
   const stage = getStage(setup.stage)
   const me = getDj(setup.dj)
   const rivalDj = getDj(setup.rival)
@@ -181,43 +200,67 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
   }, [effectiveOffset, offsetMs])
 
   const onEnded = useCallback(
-    (r: MatchResult) => {
-      const save = async (): Promise<DjId[]> => {
+    (f: Final) => {
+      const save = async (): Promise<MatchResult> => {
         const before = await allMatches()
-        const saved = await addMatch({
-          goalsFor: r.goalsFor,
-          goalsAgainst: r.goalsAgainst,
-          goldenGoal: r.golden,
-          perfects: r.perfects,
-          goods: r.goods,
-          powers: r.powers,
-          bestStreak: r.bestStreak,
+        // Primero se ve qué desbloquea el partido (sin monedas aún) para poder
+        // pagar los logros nuevos; luego se guarda ya con las monedas.
+        const draft = {
+          ...f,
+          id: 'nuevo',
+          playedAt: Date.now(),
+          goldenGoal: f.golden,
+          rivalDj: setup.rival,
+          dj: setup.dj,
+        }
+        const unlocked = unlockedBy(before, [...before, draft], setup.rival)
+        const coins = coinsFor({
+          goalsFor: f.goalsFor,
+          goalsAgainst: f.goalsAgainst,
+          perfects: f.perfects,
+          rung,
+          newBadges: unlocked.badges.length,
+        })
+        await addMatch({
+          goalsFor: f.goalsFor,
+          goalsAgainst: f.goalsAgainst,
+          goldenGoal: f.golden,
+          perfects: f.perfects,
+          goods: f.goods,
+          powers: f.powers,
+          bestStreak: f.bestStreak,
+          kicks: f.kicks,
+          jumps: f.jumps,
+          dashes: f.dashes,
+          coins,
           level,
           dj: setup.dj,
           rivalDj: setup.rival,
           stage: setup.stage,
         })
-        return newlyUnlocked(before, [...before, saved])
+        await addCoins(coins)
+        return { ...f, coins, newDjs: unlocked.djs, newBadges: unlocked.badges }
       }
       // Un fallo al guardar no debe impedir ver el resultado: el partido ya se
       // jugó, y lo peor que pasa es que no sale en el historial.
-      const saving = save().catch(() => [] as DjId[])
+      const saving = save().catch((): MatchResult => ({ ...f, coins: 0, newDjs: [], newBadges: [] }))
       // Un momento con el marcador final a la vista y luego al resultado. Con
       // `replace`, «atrás» desde el resultado no vuelve a un partido acabado.
       setTimeout(async () => {
-        const fresh = await saving
-        router.replace({
-          pathname: '/resultado',
-          params: { ...setupParams(setup), ...resultParams(r), nuevos: fresh.join(',') },
-        })
+        const r = await saving
+        router.replace({ pathname: '/resultado', params: { ...setupParams(setup), ...resultParams(r) } })
       }, END_PAUSE_MS)
     },
-    [level, router, setup],
+    [level, router, rung, setup],
   )
 
   useEffect(() => {
-    updateSettings({ lastLevel: level, lastDj: setup.dj, lastStage: setup.stage }).catch(() => undefined)
-  }, [level, setup])
+    updateSettings({ lastDj: setup.dj, lastStage: setup.stage }).catch(() => undefined)
+  }, [setup])
+
+  // Tus estadísticas son las de tus mejoras; las del rival, las de su escalón.
+  const myStats = useMemo(() => statsFor(levelsOf(settings), me.power), [settings, me.power])
+  const rivalStats = useMemo(() => statsFor(evenLevels(statLevelOfRung(rung)), rivalDj.power), [rung, rivalDj.power])
 
   // Con `useCallback` la función es la misma entre renders. Sin él, cada vez
   // que cambia el marcador (una vez por segundo, con el reloj) React crea otra
@@ -230,11 +273,14 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
       if (!rt) {
         rt = {
           // La misma semilla que el rival: cada partido reparte poderes distintos.
-          game: createInitialState(me.stats, rivalDj.stats, seed.value),
+          game: createInitialState(myStats, rivalStats, seed.value),
           ai: createAi(level, seed.value),
           perfects: 0,
           goods: 0,
           powers: 0,
+          kicks: 0,
+          jumps: 0,
+          dashes: 0,
           streak: 0,
           bestStreak: 0,
           saved: false,
@@ -247,6 +293,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
             bpm: -1,
             energy0: -1,
             energy1: -1,
+            spoiled: -1,
           },
           clock: createAudioClock(),
           beatIn: { time: 0, t0: 0, bpm: BEAT.REFERENCE_BPM, dropAt: -1 },
@@ -286,6 +333,8 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
 
       const rival = stepAi(rt.ai, s, 1, dt)
       stepGame(s, touch, rival, dt, beat)
+      // El dash es un pulso: se consume en el paso en que se pidió.
+      if (touch.dash !== 0) touch.dash = 0
 
       if (view.shock.age >= 0) {
         view.shock.age += dt
@@ -321,6 +370,12 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
             view.shock.age = 0
             burst(view.particles, ev.x, ev.y, 24, 700, PC.GLOW)
           }
+        } else if (ev.type === 'swing' || ev.type === 'jump' || ev.type === 'dash') {
+          if (ev.side === 0) {
+            if (ev.type === 'swing') rt.kicks++
+            else if (ev.type === 'jump') rt.jumps++
+            else rt.dashes++
+          }
         } else if (ev.type === 'charged') {
           // Solo se avisa de la barra propia: la del rival se ve en el marcador.
           if (ev.side === 0) scheduleOnRN(playCharged)
@@ -345,6 +400,9 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           goods: rt.goods,
           powers: rt.powers,
           bestStreak: rt.bestStreak,
+          kicks: rt.kicks,
+          jumps: rt.jumps,
+          dashes: rt.dashes,
         })
       }
       picture.value = createPicture((canvas) => {
@@ -356,6 +414,12 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
       // algo que enseña, no en cada frame.
       const seconds = Math.ceil(s.timeLeft)
       const bpm = beat ? beat.bpm : 0
+      const spoiled =
+        (s.score[1] > 0 ? 1 : 0) |
+        (rt.powers > 0 ? 2 : 0) |
+        (rt.dashes > 0 ? 4 : 0) |
+        (rt.kicks > 0 ? 8 : 0) |
+        (rt.jumps > 0 ? 16 : 0)
       const h = rt.hud
       if (
         h.score0 !== s.score[0] ||
@@ -365,7 +429,8 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
         h.golden !== s.golden ||
         h.bpm !== bpm ||
         h.energy0 !== s.players[0].energy ||
-        h.energy1 !== s.players[1].energy
+        h.energy1 !== s.players[1].energy ||
+        h.spoiled !== spoiled
       ) {
         rt.hud = {
           score0: s.score[0],
@@ -376,6 +441,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           bpm,
           energy0: s.players[0].energy,
           energy1: s.players[1].energy,
+          spoiled,
         }
         scheduleOnRN(setHud, rt.hud)
       }
@@ -445,24 +511,38 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
 
       {!ended && <TouchControls layout={painter.controls} width={width} input={input} />}
 
-      <View style={styles.hud} pointerEvents="none">
-        <View style={styles.scoreboard}>
-          <EnergyBar value={hud.energy0} color={me.look.jersey} full={stage.palette.power} />
-          <Txt variant="score" style={{ color: djNameColor(me.look.jersey, palette.fg) }}>
-            {hud.score0}
-          </Txt>
-          <Txt variant={hud.golden ? 'label' : 'score'} tone={hud.golden ? 'brand' : 'fg'} style={styles.clock}>
-            {hud.golden ? 'Gol de oro' : clock(hud.seconds)}
-          </Txt>
-          <Txt variant="score" style={{ color: djNameColor(rivalDj.look.jersey, palette.fg) }}>
-            {hud.score1}
-          </Txt>
-          <EnergyBar value={hud.energy1} color={rivalDj.look.jersey} full={stage.palette.power} />
+      <View style={[styles.hud, { paddingHorizontal: insetX + space.md }]} pointerEvents="none">
+        {/* Como en Head Soccer: arriba, a cada lado, la bandera y la barra de power de cada DJ. */}
+        <View style={styles.topBar}>
+          <View style={styles.side}>
+            <Flag country={me.origin} height={18} />
+            <PowerBar value={hud.energy0} color={me.look.jersey} full={stage.palette.power} />
+          </View>
+          <View style={styles.scoreboard}>
+            <Txt variant="score" style={{ color: djNameColor(me.look.jersey, palette.fg) }}>
+              {hud.score0}
+            </Txt>
+            <Txt variant={hud.golden ? 'label' : 'score'} tone={hud.golden ? 'brand' : 'fg'} style={styles.clock}>
+              {hud.golden ? 'Gol de oro' : clock(hud.seconds)}
+            </Txt>
+            <Txt variant="score" style={{ color: djNameColor(rivalDj.look.jersey, palette.fg) }}>
+              {hud.score1}
+            </Txt>
+          </View>
+          <View style={[styles.side, styles.sideRight]}>
+            <PowerBar value={hud.energy1} color={rivalDj.look.jersey} full={stage.palette.power} flip />
+            <Flag country={rivalDj.origin} height={18} />
+          </View>
         </View>
-        {/* El tempo a la vista: sube a lo largo del partido y se nota en el juego. */}
-        <Txt variant="data" tone="muted" style={styles.bpm}>
-          {hud.bpm > 0 ? `${hud.bpm} BPM` : ' '}
-        </Txt>
+        {/* Los logros de este partido: se tachan en cuanto ya no se pueden conseguir. */}
+        <View style={styles.badges}>
+          {LIVE_BADGES.map(([id, bit]) => (
+            <BadgeIcon key={id} id={id} size={16} earned={false} crossed={(hud.spoiled & bit) !== 0} />
+          ))}
+          <Txt variant="data" tone="muted">
+            {hud.bpm > 0 ? `  ${hud.bpm} BPM` : ' '}
+          </Txt>
+        </View>
         {(hud.phase === 'goal' || hud.phase === 'drop') && (
           <Txt variant="banner" style={styles.banner}>
             ¡GOL!
@@ -517,22 +597,42 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
 }
 
 /**
- * La barra de energía de cada jugador, junto a su marcador. Llena, se enciende
- * del color de los poderes: ese jugador tiene uno listo.
+ * La barra de power de cada jugador, junto a su bandera. Llena, se enciende
+ * del color de los poderes: ese jugador tiene su habilidad lista. La del
+ * rival se llena de derecha a izquierda, como un espejo.
  */
-function EnergyBar({ value, color, full: fullColor }: { value: number; color: string; full: string }) {
+function PowerBar({
+  value,
+  color,
+  full: fullColor,
+  flip = false,
+}: {
+  value: number
+  color: string
+  full: string
+  flip?: boolean
+}) {
   const full = value >= 1
   return (
-    <View style={styles.energy}>
+    <View style={[styles.power, flip && styles.powerFlip]}>
       <View
         style={[
-          styles.energyFill,
+          styles.powerFill,
           { width: `${Math.round(Math.max(0, value) * 100)}%`, backgroundColor: full ? fullColor : color },
         ]}
       />
     </View>
   )
 }
+
+/** Los logros que se ven durante el partido, con el bit que los tacha. */
+const LIVE_BADGES: [BadgeId, number][] = [
+  ['clean', 1],
+  ['nopower', 2],
+  ['nodash', 4],
+  ['nokick', 8],
+  ['nojump', 16],
+]
 
 const styles = StyleSheet.create({
   vs: {
@@ -545,8 +645,28 @@ const styles = StyleSheet.create({
   },
   vsSide: { alignItems: 'center', gap: space.sm },
   vsText: { fontSize: 72, fontStyle: 'italic' },
-  energy: { width: 56, height: 8, borderRadius: radius.pill, backgroundColor: palette.line, overflow: 'hidden' },
-  energyFill: { height: '100%', borderRadius: radius.pill },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: space.sm,
+    alignSelf: 'stretch',
+  },
+  side: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flex: 1 },
+  sideRight: { justifyContent: 'flex-end' },
+  power: {
+    width: 150,
+    height: 12,
+    borderRadius: radius.pill,
+    backgroundColor: palette.hud,
+    borderWidth: 1,
+    borderColor: palette.line,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  powerFlip: { flexDirection: 'row-reverse' },
+  powerFill: { height: '100%', borderRadius: radius.pill },
+  badges: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.xs },
   root: { flex: 1, backgroundColor: palette.bg },
   hud: { ...StyleSheet.absoluteFill, alignItems: 'center' },
   scoreboard: {
@@ -562,7 +682,6 @@ const styles = StyleSheet.create({
   // Ancho fijo: si no, el marcador se ensancha y encoge cada vez que cambia el reloj.
   clock: { minWidth: 88, textAlign: 'center' },
   banner: { marginTop: space.lg },
-  bpm: { marginTop: space.xs },
   perf: { position: 'absolute', top: space.xs },
   exit: {
     position: 'absolute',

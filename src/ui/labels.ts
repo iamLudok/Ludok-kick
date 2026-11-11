@@ -43,8 +43,8 @@ export const POWER_HINT: Record<PowerKind, string> = {
   lowpass: 'el rival, a cámara lenta',
   loop: 'el vinilo se queda flotando',
   moon: 'gravedad baja para todos',
-  wings: 'planeas y tienes doble salto',
-  jester: 'al rival se le cambian izquierda y derecha',
+  wings: 'planeas y tienes doble salto 7 s',
+  jester: 'al rival se le cambian izquierda y derecha 2 s',
   blackout: 'el rival se queda sin energía ni poderes',
 }
 

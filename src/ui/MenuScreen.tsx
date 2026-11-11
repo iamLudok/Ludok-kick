@@ -5,7 +5,8 @@ import { updateSettings } from '../lib/settings'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DJS } from '../content/djs'
-import { useLevelTallies, useUnlocks } from '../hooks/useHistory'
+import { LADDER } from '../content/ladder'
+import { useLadder, useLevelTallies } from '../hooks/useHistory'
 import { useSettings } from '../hooks/useSettings'
 import { LEVELS } from '../types'
 import { DjPortrait } from './Art'
@@ -19,7 +20,8 @@ export function MenuScreen() {
   const insets = useSafeAreaInsets()
   const { data: settings, ready } = useSettings()
   const { data: tallies, ready: talliesReady } = useLevelTallies()
-  const { unlocked } = useUnlocks()
+  const { ladder } = useLadder()
+  const unlocked = ladder.playable
   const taps = useRef<number[]>([])
   const tapTitle = () => {
     const now = Date.now()
@@ -71,9 +73,12 @@ export function MenuScreen() {
         </Txt>
         <View style={styles.buttons}>
           <Button title="Jugar" onPress={() => router.push('/elegir')} />
-          <Button title="Misiones" kind="secondary" onPress={() => router.push('/misiones')} />
+          <Button title="Tienda" kind="secondary" onPress={() => router.push('/tienda')} />
           <Button title="Ajustes" kind="secondary" onPress={() => router.push('/ajustes')} />
         </View>
+        <Txt variant="body" tone="brand">
+          {settings.coins} monedas · {ladder.beaten.size} de {LADDER.length} rivales ganados
+        </Txt>
         <Txt variant="data" tone="muted">
           {talliesReady && total.played > 0
             ? `${total.played} partidos · ${total.won} ganados · ${total.drawn} empatados · ${total.lost} perdidos`

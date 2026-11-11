@@ -31,6 +31,15 @@ export interface MatchRecord {
   powers?: number
   /** La racha más larga de PERFECT seguidos. Ausente en partidos anteriores a contarla. */
   bestStreak?: number
+  /**
+   * Cuántas veces chutó, saltó y hizo dash el jugador. Ausentes en partidos
+   * anteriores a contarlos (y entonces no cuentan para los logros de «sin…»).
+   */
+  kicks?: number
+  jumps?: number
+  dashes?: number
+  /** Monedas ganadas en el partido. */
+  coins?: number
   level?: Level
   /** Identificadores del DJ propio, del rival y del escenario. */
   dj?: string
@@ -59,6 +68,14 @@ export interface Settings {
    * activa con un truco escondido en el menú. Ausente = no.
    */
   unlockAll?: boolean
+  /** Monedas para gastar en la tienda. */
+  coins: number
+  /** Nivel de cada mejora (0–10). */
+  upSpeed: number
+  upKick: number
+  upJump: number
+  upDash: number
+  upPower: number
   /** Fecha de la última copia exportada; 0 si nunca. */
   lastBackup: number
   schemaVersion: number

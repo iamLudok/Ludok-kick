@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite'
-import type { DjId } from '../content/djs'
-import { unlockedDjs } from '../content/missions'
+import { ladderState, type LadderState } from '../content/ladder'
 import { db } from '../lib/db'
 import { useSettings } from './useSettings'
 import { tally, type Tally } from '../lib/matches'
@@ -31,14 +30,14 @@ export function useLevelTallies(): { data: Record<Level, Tally>; ready: boolean 
 }
 
 /**
- * Los DJs que se pueden elegir. Mientras la base no responde se da por
- * desbloqueado solo el inicial: es lo seguro (nunca deja elegir uno que no
- * toca), y dura un instante.
+ * Dónde se está en la escalera: con qué DJs se puede jugar y contra qué
+ * rivales. Mientras la base no responde, solo el inicial y el primer rival:
+ * es lo seguro (nunca deja elegir algo que no toca), y dura un instante.
  */
-export function useUnlocks(): { unlocked: Set<DjId>; history: MatchRecord[]; ready: boolean } {
+export function useLadder(): { ladder: LadderState; history: MatchRecord[]; ready: boolean } {
   const { history, ready } = useHistory()
   const { data: settings } = useSettings()
   const all = settings.unlockAll === true
-  const unlocked = useMemo(() => unlockedDjs(history, all), [history, all])
-  return { unlocked, history, ready }
+  const ladder = useMemo(() => ladderState(history, all), [history, all])
+  return { ladder, history, ready }
 }

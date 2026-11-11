@@ -18,9 +18,9 @@ function canon(value: unknown): string {
 async function main() {
   /* --- Ida y vuelta ------------------------------------------------------ */
   const source = await freshDbAsCurrent()
-  await writeSettings(source, { ...DEFAULT_SETTINGS, audioOffsetMs: 85, musicVolume: 0.6, lastLevel: 'peak', lastDj: 'minimal', showPerf: true, unlockAll: true })
+  await writeSettings(source, { ...DEFAULT_SETTINGS, audioOffsetMs: 85, musicVolume: 0.6, lastLevel: 'peak', lastDj: 'minimal', showPerf: true, unlockAll: true, coins: 777, upKick: 3, upDash: 2 })
   const full = await addMatch(
-    { goalsFor: 3, goalsAgainst: 2, goldenGoal: true, perfects: 7, goods: 4, powers: 2, bestStreak: 5, level: 'closing', dj: 'karl', rivalDj: 'ludok', stage: 'bilbao' },
+    { goalsFor: 3, goalsAgainst: 2, goldenGoal: true, perfects: 7, goods: 4, powers: 2, bestStreak: 5, kicks: 14, jumps: 0, dashes: 3, coins: 120, level: 'closing', dj: 'karl', rivalDj: 'ludok', stage: 'bilbao' },
     1000,
   )
   // Un partido sin ninguno de los campos opcionales: es donde se cuelan los null.
@@ -51,6 +51,7 @@ async function main() {
   eq('se restauran las preferencias', settings.musicVolume, 0.6)
   eq('incluido el último nivel', settings.lastLevel, 'peak')
   eq('y el interruptor de rendimiento', settings.showPerf, true)
+  check('y las monedas y las mejoras', settings.coins === 777 && settings.upKick === 3 && settings.upDash === 2)
   eq('la calibración del móvil de destino se conserva', settings.audioOffsetMs, 210)
   eq('y su fecha de última copia también', settings.lastBackup, 555)
 
