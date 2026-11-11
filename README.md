@@ -52,28 +52,28 @@ Once caricaturas con nombres guiño a DJs conocidos (no se nombra a nadie, así 
 puede compartir). Cada uno pone su género y tiene su habilidad propia; arriba, en el partido,
 lleva la bandera de su país junto a su barra de power. Solo están los que se reconocen de un
 vistazo por algún rasgo (la calva, el flequillo, el pelo verde, la máscara): en el partido las
-cabezas son pequeñas y un DJ sin rasgo propio se confunde con otro. Se empieza con DJ Ludok; el
+cabezas son pequeñas y un DJ sin rasgo propio se confunde con otro. Se empieza con Ludok; el
 resto se desbloquea ganándole en la escalera.
 
 | Escalón | DJ | País | Música | Habilidad | IA |
 |---|---|---|---|---|---|
-| — | **DJ Ludok** (inicial) | Euskadi | House · 124 | Scratch | — |
+| — | **Ludok** (inicial) | Euskadi | Melodic techno · 124 | Scratch | — |
 | 1 | **Karl Box** | Reino Unido | Techno · 130 | Bombo | Warm-up |
 | 2 | **Marsmelou** | EE. UU. | Future bounce · 128 | Nube | Warm-up |
-| 3 | **Ritxie Hautin** | Canadá | Minimal · 125 | Loop | Warm-up |
+| 3 | **Ritxi Hautin** | Canadá | Minimal · 125 | Loop | Warm-up |
 | 4 | **Mis Monik** | Ucrania | Progressive house · 124 | Rayo | Peak Time |
 | 5 | **Deadmouse** | Canadá | Progressive · 128 | Cabeza gigante | Peak Time |
 | 6 | **Daft Funk** | Francia | French house · 124 | Modo robot | Peak Time |
-| 7 | **Solomoon** | Bosnia | Melodic techno · 122 | Luna | Peak Time |
+| 7 | **Solomoon** | Bosnia | Melodic house · 122 | Luna | Peak Time |
 | 8 | **Klaptone** | Alemania | Deep house · 122 | Alas | Closing |
-| 9 | **Boris Brejtxa** | Alemania | High-tech minimal · 126 | Bufón | Closing |
-| 10 | **I Hate Modems** | Francia | Techno industrial · 145 | Apagón | Closing |
+| 9 | **Boris Bretxa** | Alemania | High-tech minimal · 126 | Bufón | Closing |
+| 10 | **I Hait Mudel** | Francia | Techno industrial · 145 | Apagón | Closing |
 
 ## La escalera, los logros y la tienda
 
 Como el arcade de Head Soccer:
 
-- **Escalera de rivales.** Se empieza con DJ Ludok y solo contra el primero; ganarle abre el
+- **Escalera de rivales.** Se empieza con Ludok y solo contra el primero; ganarle abre el
   siguiente y lo desbloquea para jugar con él. La IA sube de nivel con la escalera (Warm-up,
   Peak Time, Closing) y sus estadísticas también (las del escalón 1 a 10).
 - **Logros por rival** (ocho insignias contra cada uno): gana sin encajar, por 5 goles, con gol

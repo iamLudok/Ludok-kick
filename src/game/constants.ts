@@ -293,9 +293,9 @@ export const POWER = {
   /** Alas (Klaptone): planea cayendo a esta fracción de la gravedad. */
   WINGS_GRAVITY: 0.4,
   WINGS_TIME: 7,
-  /** Bufón (Boris Brejtxa): cuánto tiene el rival los controles cambiados. */
+  /** Bufón (Boris Bretxa): cuánto tiene el rival los controles cambiados. */
   JESTER_TIME: 2,
-  /** Apagón (I Hate Modems): cuánto se queda el rival sin energía ni poderes. */
+  /** Apagón (I Hait Mudel): cuánto se queda el rival sin energía ni poderes. */
   BLACKOUT_TIME: 6,
 }
 
