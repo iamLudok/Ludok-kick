@@ -27,6 +27,7 @@ import { palette } from '../ui/theme'
 import type { DjLook } from '../content/djs'
 import { createDjPaints, drawHead, type DjPaints } from './characters'
 import { drawDecor } from './decor'
+import { drawParticles, type ParticlePool } from './particles'
 import type { StageDecor, StagePalette } from './stage'
 import { fitWorld, layoutControls, type ControlsLayout, type Point, type View } from './view'
 
@@ -60,6 +61,7 @@ export type BeatView = {
   fx: Fx[]
   /** La onda del último drop: dónde nació y cuánto hace (segundos); edad -1 si no hay. */
   shock: { x: number; y: number; age: number }
+  particles: ParticlePool
 }
 
 /** Lo que dura la onda del drop y la sacudida de cámara. */
@@ -101,6 +103,12 @@ export type Painter = {
   beatFlash: SkPaint
   burst: SkPaint
   shockRing: SkPaint
+  /** Partículas: un pincel por color (ver PC en `particles.ts`), de trazo y de relleno. */
+  particleStrokes: SkPaint[]
+  particleFills: SkPaint[]
+  /** Los focos que se encienden con cada bombo, encima de los que ya pinta el fondo. */
+  beams: SkPath[]
+  beamPulse: SkPaint
   shockFlash: SkPaint
   freezeScrim: SkPaint
   sideFill: SkPaint
@@ -335,6 +343,10 @@ export function createPainter(sw: number, sh: number, insetX: number, stage: Sta
     beatFlash: stroke('#ffffff', 4),
     burst: stroke(st.perfect, 4),
     shockRing: stroke(st.beatGlow, 14),
+    particleStrokes: [st.perfect, st.good, st.power, st.beatGlow, '#ffffff', djs[0].jersey, djs[1].jersey].map((c) => stroke(c, 3)),
+    particleFills: [st.perfect, st.good, st.power, st.beatGlow, '#ffffff', djs[0].jersey, djs[1].jersey].map((c) => fill(c)),
+    beams: [200, 400, 600, 800].map((x) => polygon([x - 8, 8, x + 8, 8, x + 95, FIELD.GROUND_Y, x - 95, FIELD.GROUND_Y])),
+    beamPulse: fill(st.beam),
     shockFlash: fill('#ffffff'),
     freezeScrim: fill('#05030a'),
     sideFill: fill(st.side),
@@ -611,6 +623,11 @@ export function drawFrame(
   canvas.translate(v.ox, v.oy)
   canvas.scale(v.scale, v.scale)
 
+  // Los focos se encienden con cada bombo: es la luz de la sala marcando el ritmo.
+  if (pulse > 0.02) {
+    k.beamPulse.setAlphaf(0.13 * pulse)
+    for (let i = 0; i < k.beams.length; i++) canvas.drawPath(k.beams[i], k.beamPulse)
+  }
   drawCones(canvas, k, pulse)
 
   for (let i = 0; i < 2; i++) {
@@ -627,6 +644,7 @@ export function drawFrame(
   drawPlayer(canvas, k, s.players[0], ahead, bx, by)
   drawVinyl(canvas, k, bx, by, b.angle + b.spin * ahead)
   drawPowerEffects(canvas, k, s, ahead, bx, by)
+  drawParticles(canvas, beat.particles, k.particleStrokes, k.particleFills)
   for (let i = 0; i < beat.fx.length; i++) drawFx(canvas, k, beat.fx[i])
 
   if (shock.age >= 0 && shock.age < SHOCK_LIFE) {

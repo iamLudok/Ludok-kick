@@ -53,18 +53,33 @@ export function getEngine(): Engine {
 }
 
 /**
- * Enciende o apaga la salida de audio. Las órdenes se encadenan una detrás de
- * otra: `resume` y `suspend` son asíncronas, y al cambiar de pantalla una
- * pide apagar justo cuando la siguiente pide encender. Lanzadas a la vez, la
- * que tardaba más ganaba y la pantalla nueva se quedaba muda.
+ * La salida de audio está encendida mientras alguien la necesite: la música
+ * de una pantalla, un clic de un botón. Cada uno la «sujeta» y la «suelta», y
+ * se apaga cuando nadie la sujeta. Con un simple encender/apagar, el clic del
+ * botón que lleva al partido apagaba el audio justo cuando el partido lo
+ * acababa de encender.
+ *
+ * Las órdenes al motor se encadenan una detrás de otra: `resume` y `suspend`
+ * son asíncronas, y lanzadas a la vez ganaba la que tardaba más.
  */
+let holds = 0
 let transition: Promise<unknown> = Promise.resolve()
 
-export function setEngineRunning(running: boolean): Promise<unknown> {
+function apply(): Promise<unknown> {
   const { ctx } = getEngine()
   transition = transition
-    .then(() => (running ? ctx.resume() : ctx.suspend()))
+    .then(() => (holds > 0 ? ctx.resume() : ctx.suspend()))
     // Un fallo aquí (p. ej. otra app tiene el audio) no debe romper la cadena.
     .catch(() => undefined)
   return transition
+}
+
+export function holdEngine(): Promise<unknown> {
+  holds++
+  return apply()
+}
+
+export function releaseEngine(): Promise<unknown> {
+  holds = Math.max(0, holds - 1)
+  return apply()
 }

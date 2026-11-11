@@ -48,6 +48,8 @@ export interface Settings {
   lastDj?: string
   lastStage?: string
   lastLevel?: Level
+  /** Enseñar fps y milisegundos por frame durante el partido. Ausente = no. */
+  showPerf?: boolean
   /** Fecha de la última copia exportada; 0 si nunca. */
   lastBackup: number
   schemaVersion: number

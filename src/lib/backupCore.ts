@@ -105,6 +105,7 @@ export async function importBackup(
       lastDj: parsed.settings.lastDj ?? current.lastDj,
       lastStage: parsed.settings.lastStage ?? current.lastStage,
       lastLevel: parsed.settings.lastLevel ?? current.lastLevel,
+      showPerf: parsed.settings.showPerf ?? current.showPerf,
       id: 'app',
     })
   }

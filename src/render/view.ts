@@ -58,8 +58,10 @@ export function layoutControls(v: View, insetX: number): ControlsLayout {
     r,
     left: { x: margin + r, y },
     right: { x: margin + r * 3 + gap, y },
-    kick: { x: v.sw - margin - r, y },
-    jump: { x: v.sw - margin - r * 3 - gap, y },
+    // Saltar en el extremo y chutar hacia dentro: se chuta mucho más que se
+    // salta, y así el botón que más se usa queda bajo el pulgar en reposo.
+    jump: { x: v.sw - margin - r, y },
+    kick: { x: v.sw - margin - r * 3 - gap, y },
     power: { x: v.sw / 2, y },
     powerR: r * 0.85,
   }

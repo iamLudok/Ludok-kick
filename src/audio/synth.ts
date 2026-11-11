@@ -211,6 +211,23 @@ export function goalSfx(e: Engine): void {
   amp.connect(e.sfx)
 }
 
+/* --- Interfaz ------------------------------------------------------------ */
+
+export type UiSound = 'tap' | 'select' | 'back'
+
+/** Clics cortos y discretos: la interfaz no tiene que sonar más que la música. */
+export function uiSfx(e: Engine, kind: UiSound): void {
+  const t = e.ctx.currentTime
+  if (kind === 'tap') {
+    blip(e, t, 1200, 900, 0.05, 0.16, 'triangle')
+  } else if (kind === 'select') {
+    blip(e, t, 700, 700, 0.04, 0.14, 'triangle')
+    blip(e, t + 0.045, 1050, 1050, 0.06, 0.14, 'triangle')
+  } else {
+    blip(e, t, 900, 500, 0.07, 0.14, 'triangle')
+  }
+}
+
 /* --- Poderes ------------------------------------------------------------ */
 
 /** La barra se llenó: un arpegio que sube. */

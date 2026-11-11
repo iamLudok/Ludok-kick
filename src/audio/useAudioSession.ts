@@ -4,7 +4,7 @@ import { useSharedValue, type SharedValue } from 'react-native-reanimated'
 import { POWER } from '../game/constants'
 import type { Bar, Judge, PowerKind } from '../game/types'
 import type { ClockSource } from './clock'
-import { getEngine, setEngineRunning } from './engine'
+import { getEngine, holdEngine, releaseEngine } from './engine'
 import type { Pattern } from './patterns'
 import { startSequencer, type Sequencer } from './sequencer'
 import { chargedSfx, goalSfx, hitSfx, powerSfx } from './synth'
@@ -54,10 +54,23 @@ export function useAudioSession(
     let mounted = true
     let wanted = false
     let probe: ReturnType<typeof setTimeout> | null = null
+    // Si esta pantalla sujeta ahora mismo el audio: sujetar y soltar tienen
+    // que ir a pares, o el contador del motor se descuadra.
+    let holding = false
+    const hold = () => {
+      if (holding) return Promise.resolve()
+      holding = true
+      return holdEngine()
+    }
+    const release = () => {
+      if (!holding) return
+      holding = false
+      void releaseEngine()
+    }
 
     const run = async () => {
       wanted = true
-      await setEngineRunning(true)
+      await hold()
       // Mientras se encendía el audio pueden haber cerrado la pantalla o
       // mandado la app a segundo plano.
       if (!mounted || !wanted) return
@@ -84,7 +97,7 @@ export function useAudioSession(
     const pause = () => {
       wanted = false
       seqRef.current?.pause()
-      void setEngineRunning(false)
+      release()
     }
 
     const onAppState = (state: AppStateStatus) => {
@@ -102,7 +115,7 @@ export function useAudioSession(
       seqRef.current?.stop()
       seqRef.current = null
       bars.value = []
-      void setEngineRunning(false)
+      release()
     }
     // La base de una pantalla no cambia mientras está abierta.
     // eslint-disable-next-line react-hooks/exhaustive-deps

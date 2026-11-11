@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, AppState, ScrollView, StyleSheet, View, type AppStateStatus } from 'react-native'
+import { Alert, AppState, ScrollView, StyleSheet, Switch, View, type AppStateStatus } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, { useAnimatedStyle, useFrameCallback, useSharedValue } from 'react-native-reanimated'
@@ -12,7 +12,8 @@ import { barAt, beatDelta, beatPhase } from '../game/beat'
 import { BEAT, CALIBRATION } from '../game/constants'
 import { useSettings } from '../hooks/useSettings'
 import { importBackup, pickJsonFile, shareBackup } from '../lib/backup'
-import { clearAudioOffset, effectiveOffsetMs, saveAudioOffset } from '../lib/settings'
+import { clearAudioOffset, effectiveOffsetMs, saveAudioOffset, updateSettings } from '../lib/settings'
+import { playUi } from '../audio/ui'
 import { Button } from './Button'
 import { Txt } from './Text'
 import { palette, radius, space } from './theme'
@@ -189,7 +190,7 @@ export function SettingsScreen() {
       ]}
     >
       <View style={styles.header}>
-        <Button title="Volver" kind="secondary" onPress={() => router.back()} style={styles.small} />
+        <Button title="Volver" kind="secondary" sound="back" onPress={() => router.back()} style={styles.small} />
         <Txt variant="title">Ajustes</Txt>
       </View>
 
@@ -230,23 +231,43 @@ export function SettingsScreen() {
           </Txt>
         </View>
 
-        <View style={styles.card}>
-          <Txt variant="label" tone="brand">
-            Copia de seguridad
-          </Txt>
-          <Txt variant="body" tone="muted">
-            Guarda tus ajustes y tu historial de partidos en un fichero que puedes llevarte a donde quieras.
-          </Txt>
-          <Txt variant="data" tone="muted">
-            Última copia: {formatDate(settings.lastBackup)}
-          </Txt>
-          <View style={styles.row}>
-            <Button title="Exportar" onPress={exportCopy} style={styles.small} />
-            <Button title="Importar" kind="secondary" onPress={importCopy} style={styles.small} />
+        <View style={styles.side}>
+          <View style={styles.card}>
+            <Txt variant="label" tone="brand">
+              Copia de seguridad
+            </Txt>
+            <Txt variant="body" tone="muted">
+              Guarda tus ajustes y tu historial de partidos en un fichero que puedes llevarte a donde quieras.
+            </Txt>
+            <Txt variant="data" tone="muted">
+              Última copia: {formatDate(settings.lastBackup)}
+            </Txt>
+            <View style={styles.row}>
+              <Button title="Exportar" onPress={exportCopy} style={styles.small} />
+              <Button title="Importar" kind="secondary" onPress={importCopy} style={styles.small} />
+            </View>
+            <Txt variant="data" tone="muted">
+              La calibración de audio no viaja en la copia: es propia de cada móvil y de cada auricular.
+            </Txt>
           </View>
-          <Txt variant="data" tone="muted">
-            La calibración de audio no viaja en la copia: es propia de cada móvil y de cada auricular.
-          </Txt>
+
+          <View style={[styles.card, styles.switchRow]}>
+            <View style={styles.grow}>
+              <Txt variant="body">Mostrar rendimiento</Txt>
+              <Txt variant="data" tone="muted">
+                Fps y milisegundos por frame durante el partido.
+              </Txt>
+            </View>
+            <Switch
+              value={settings.showPerf === true}
+              onValueChange={(v) => {
+                playUi('select')
+                void updateSettings({ showPerf: v })
+              }}
+              trackColor={{ true: palette.brand, false: palette.line }}
+              thumbColor={palette.fg}
+            />
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -258,6 +279,9 @@ const PAD = 132
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.bg, paddingTop: space.md },
   header: { flexDirection: 'row', alignItems: 'center', gap: space.lg, marginBottom: space.md },
+  side: { flex: 1, gap: space.lg },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  grow: { flex: 1 },
   columns: { flexDirection: 'row', gap: space.lg, paddingBottom: space.lg, alignItems: 'flex-start' },
   card: {
     flex: 1,

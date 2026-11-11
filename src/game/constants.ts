@@ -320,7 +320,3 @@ export const SIM = {
   MAX_STEPS: 6,
 }
 
-export const DEBUG = {
-  /** Enseña fps y milisegundos de trabajo por frame en una esquina. */
-  OVERLAY: true,
-}

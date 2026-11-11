@@ -57,6 +57,7 @@ export function rowToSettings(r: SettingsRow): Settings {
     lastDj: u(r.lastDj),
     lastStage: u(r.lastStage),
     lastLevel: u(r.lastLevel),
+    showPerf: u(r.showPerf),
     lastBackup: r.lastBackup,
     schemaVersion: r.schemaVersion,
   }
@@ -71,6 +72,7 @@ export function settingsToRow(s: Settings): SettingsInsert {
     lastDj: n(s.lastDj),
     lastStage: n(s.lastStage),
     lastLevel: isLevel(s.lastLevel) ? s.lastLevel : null,
+    showPerf: n(s.showPerf),
     lastBackup: s.lastBackup,
     schemaVersion: s.schemaVersion ?? SCHEMA_VERSION,
   }

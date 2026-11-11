@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Icono temático de Android 13+: una sola tinta, el sistema le pone el color. -->
+  <g transform="translate(512 512) scale(0.84) translate(-512 -548)" fill="none" stroke="#ffffff">
+    <circle cx="512" cy="548" r="278" stroke-width="44"/>
+    <circle cx="512" cy="548" r="186" stroke-width="22"/>
+    <circle cx="512" cy="548" r="96" fill="#ffffff" stroke="none"/>
+    <path d="M 200 560 A 312 330 0 0 1 824 560" stroke-width="48" stroke-linecap="round"/>
+    <rect x="148" y="470" width="104" height="178" rx="46" fill="#ffffff" stroke="none"/>
+    <rect x="772" y="470" width="104" height="178" rx="46" fill="#ffffff" stroke="none"/>
+  </g>
+</svg>

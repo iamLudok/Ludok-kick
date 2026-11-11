@@ -19,13 +19,15 @@ siguiente.
 | 4 | Drops en los goles y BPM que sube con el partido | Hecha |
 | 5 | Poderes de DJ y barra de energía | Hecha |
 | 6 | Cuatro DJs, tres escenarios, menús y pantalla de resultado | Hecha |
-| 7 | Pulido: partículas, sacudida de cámara, icono y splash | Pendiente |
+| 7 | Pulido: partículas, focos al ritmo, sonidos de interfaz, icono y splash | Hecha |
 
 ## Cómo se juega
 
 - **Mitad izquierda de la pantalla**: moverse. No hace falta acertar en las flechas; cuenta
   cualquier toque, y se puede deslizar de un lado a otro sin levantar el dedo.
-- **Mitad derecha**: saltar (flecha) y chutar (bota). Va al botón que quede más cerca del dedo.
+- **Mitad derecha**: chutar (bota, hacia dentro) y saltar (flecha, en el extremo). Va al botón
+  que quede más cerca del dedo.
+- **Botón central**: el poder, cuando lo tienes.
 - El cabezazo sale solo al chocar con la cabeza.
 - Con el botón de chutar, el momento importa: si el pie pilla el vinilo al principio del
   barrido sale raso y rápido; si lo pilla al final, bombeado.
@@ -187,7 +189,8 @@ velocidades, gravedad, rebotes, fuerza del chut, tamaño de las porterías, dura
 partido, tempo, ventanas de PERFECT y GOOD y cuánto premian, y la personalidad de cada nivel
 de la IA (`AI`). Cada uno lleva al lado para qué sirve.
 
-Para ver los fps y los milisegundos de trabajo por frame, `DEBUG.OVERLAY` en ese mismo fichero.
+Para ver los fps y los milisegundos de trabajo por frame durante el partido: **Ajustes →
+Mostrar rendimiento**.
 
 ## Estructura
 
@@ -236,6 +239,19 @@ Tres decisiones sostienen el resto:
   adelanta lo que quede sin simular.
 - **Simulación y dibujo corren en el hilo de UI**, no en el de JavaScript: los botones no
   esperan a React y un tirón de JavaScript no para el partido.
+
+## Icono y splash
+
+Los dibujos fuente están en `assets/src/` como SVG: un vinilo con auriculares sobre el morado
+Ludok. Los PNG se generan con:
+
+```bash
+./scripts/icons.sh     # necesita ImageMagick con librsvg
+```
+
+Hay icono adaptable de Android (capa delantera sobre fondo morado) y versión monocroma para los
+iconos temáticos de Android 13 en adelante. Tras cambiar el icono o el splash hay que borrar
+`android/` antes de compilar, para que `expo prebuild` lo regenere con los dibujos nuevos.
 
 ## Dirección de arte
 

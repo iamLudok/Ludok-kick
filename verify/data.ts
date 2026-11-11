@@ -18,7 +18,7 @@ function canon(value: unknown): string {
 async function main() {
   /* --- Ida y vuelta ------------------------------------------------------ */
   const source = await freshDbAsCurrent()
-  await writeSettings(source, { ...DEFAULT_SETTINGS, audioOffsetMs: 85, musicVolume: 0.6, lastLevel: 'peak', lastDj: 'minimal' })
+  await writeSettings(source, { ...DEFAULT_SETTINGS, audioOffsetMs: 85, musicVolume: 0.6, lastLevel: 'peak', lastDj: 'minimal', showPerf: true })
   const full = await addMatch(
     { goalsFor: 3, goalsAgainst: 2, goldenGoal: true, perfects: 7, goods: 4, level: 'closing', dj: 'techno', rivalDj: 'house', stage: 'bilbao' },
     1000,
@@ -49,6 +49,7 @@ async function main() {
   const settings = await readSettings(target)
   eq('se restauran las preferencias', settings.musicVolume, 0.6)
   eq('incluido el último nivel', settings.lastLevel, 'peak')
+  eq('y el interruptor de rendimiento', settings.showPerf, true)
   eq('la calibración del móvil de destino se conserva', settings.audioOffsetMs, 210)
   eq('y su fecha de última copia también', settings.lastBackup, 555)
 

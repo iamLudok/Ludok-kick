@@ -1,4 +1,6 @@
 import { Pressable, StyleSheet, type ViewStyle } from 'react-native'
+import { playUi } from '../audio/ui'
+import type { UiSound } from '../audio/synth'
 import { Txt } from './Text'
 import { palette, radius, space } from './theme'
 
@@ -7,14 +9,19 @@ interface Props {
   onPress: () => void
   kind?: 'primary' | 'secondary'
   style?: ViewStyle
+  /** El clic que suena al pulsar. «back» para volver atrás. */
+  sound?: UiSound
 }
 
 /** El principal va en morado de marca; el secundario, solo con borde. */
-export function Button({ title, onPress, kind = 'primary', style }: Props) {
+export function Button({ title, onPress, kind = 'primary', style, sound = 'tap' }: Props) {
   const primary = kind === 'primary'
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        playUi(sound)
+        onPress()
+      }}
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.base,

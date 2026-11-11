@@ -10,13 +10,14 @@ import { createAudioClock, readAudioClock, type AudioClock } from '../audio/cloc
 import { useAudioSession } from '../audio/useAudioSession'
 import { createAi, stepAi, type AiState } from '../game/ai'
 import { barAt, beatPhase, tempoAt } from '../game/beat'
-import { BEAT, DEBUG, MATCH } from '../game/constants'
+import { BEAT, MATCH } from '../game/constants'
 import { createInitialState, emptyInput } from '../game/state'
 import { stepGame, type BeatInput } from '../game/step'
 import type { GameState, InputFrame, Phase } from '../game/types'
 import { addMatch } from '../lib/matches'
 import { useSettings } from '../hooks/useSettings'
 import { effectiveOffsetMs, updateSettings } from '../lib/settings'
+import { burst, confetti, createPool, PC, updateParticles } from '../render/particles'
 import { FX_LIFE, SHOCK_LIFE, createPainter, drawFrame, judgeLabel, powerLabel, type BeatView } from '../render/draw'
 import { getDj } from '../content/djs'
 import { readSetup, resultParams, setupParams, type MatchResult, type MatchSetup } from '../content/setup'
@@ -135,6 +136,9 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
   const picture = useSharedValue<SkPicture>(painter.blank)
   const [hud, setHud] = useState<HudData>(INITIAL_HUD)
   const [perf, setPerf] = useState('')
+  // El overlay de rendimiento se enciende en Ajustes; el bucle lo consulta en
+  // cada frame, así que viaja al hilo de UI en un valor compartido.
+  const showPerf = useSharedValue(false)
 
   const { data: settings } = useSettings()
   // Lo avanzado del partido (0–1). Lo escribe el bucle del juego y lo lee la
@@ -160,6 +164,10 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
   // como mucho una vez por partido, pero se lee en cada frame.
   const offsetMs = useSharedValue<number>(BEAT.DEFAULT_OFFSET_MS)
   const effectiveOffset = effectiveOffsetMs(settings, audio.deviceLatencyMs)
+  useEffect(() => {
+    showPerf.value = settings.showPerf === true
+  }, [settings.showPerf, showPerf])
+
   useEffect(() => {
     offsetMs.value = effectiveOffset
   }, [effectiveOffset, offsetMs])
@@ -221,7 +229,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           },
           clock: createAudioClock(),
           beatIn: { time: 0, t0: 0, bpm: BEAT.BPM_START, dropAt: -1 },
-          beatView: { phase: -1, fx: [], shock: { x: 0, y: 0, age: -1 } },
+          beatView: { phase: -1, fx: [], shock: { x: 0, y: 0, age: -1 }, particles: createPool() },
           perfTime: 0,
           perfFrames: 0,
           perfWork: 0,
@@ -263,6 +271,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
         if (view.shock.age > SHOCK_LIFE) view.shock.age = -1
       }
 
+      updateParticles(view.particles, dt)
       for (let i = view.fx.length - 1; i >= 0; i--) {
         view.fx[i].age += dt
         if (view.fx[i].age >= FX_LIFE) view.fx.splice(i, 1)
@@ -274,6 +283,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           if (ev.side === 0 && ev.judge === 2) rt.perfects++
           if (ev.side === 0 && ev.judge === 1) rt.goods++
           if (ev.judge > 0) view.fx.push({ label: judgeLabel(ev.judge), x: ev.x, y: ev.y, age: 0 })
+          if (ev.judge === 2) burst(view.particles, ev.x, ev.y, 14, 520, PC.PERFECT)
         } else if (ev.type === 'power') {
           if (ev.side === 0) rt.powers++
           scheduleOnRN(playPower, ev.kind)
@@ -283,10 +293,12 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
           if (ev.side === 0) scheduleOnRN(playCharged)
         } else if (ev.type === 'goal') {
           scheduleOnRN(onGoal, s.score[0] + s.score[1], ev.at)
+          confetti(view.particles, ev.side, 70)
         } else if (ev.type === 'drop') {
           view.shock.x = ev.x
           view.shock.y = ev.y
           view.shock.age = 0
+          burst(view.particles, ev.x, ev.y, 36, 900, PC.GLOW)
         }
       }
 
@@ -336,7 +348,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
         progress.value = 1 - s.timeLeft / MATCH.DURATION
       }
 
-      if (DEBUG.OVERLAY) {
+      if (showPerf.value) {
         rt.perfTime += dt
         rt.perfFrames += 1
         rt.perfWork += performance.now() - started
@@ -367,6 +379,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
       progress,
       runtime,
       seed,
+      showPerf,
       source,
     ],
   )
@@ -418,7 +431,7 @@ function Match({ width, height, insetX, setup }: { width: number; height: number
         )}
       </View>
 
-      {DEBUG.OVERLAY && (
+      {settings.showPerf === true && (
         <View style={[styles.perf, { left: insetX + space.sm }]} pointerEvents="none">
           <Txt variant="data" tone="muted">
             {perf}

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS settings (
   lastDj TEXT,
   lastStage TEXT,
   lastLevel TEXT,
+  showPerf INTEGER,
   lastBackup INTEGER NOT NULL DEFAULT 0,
   schemaVersion INTEGER NOT NULL
 );
@@ -45,7 +46,10 @@ CREATE INDEX IF NOT EXISTS matches_playedAt_idx ON matches (playedAt);
  * ⚠️ Añadir una columna a CREATE_SQL SIN añadir aquí su ALTER deja rotas todas
  * las instalaciones que ya existen.
  */
-export const MIGRATIONS: string[] = []
+export const MIGRATIONS: string[] = [
+  // v1 → v2: interruptor del overlay de rendimiento (fps) en Ajustes.
+  `ALTER TABLE settings ADD COLUMN showPerf INTEGER;`,
+]
 
 /** Versión del esquema de SQLite. NO es la del formato de copia (`version.ts`). */
 export const DB_VERSION = MIGRATIONS.length + 1

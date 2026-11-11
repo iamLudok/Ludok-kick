@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { playUi } from '../audio/ui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DJS, isDjId, pickRival, type DjId } from '../content/djs'
 import { setupParams } from '../content/setup'
@@ -45,7 +46,7 @@ export function SelectScreen() {
       ]}
     >
       <View style={styles.header}>
-        <Button title="Volver" kind="secondary" onPress={() => router.back()} style={styles.small} />
+        <Button title="Volver" kind="secondary" sound="back" onPress={() => router.back()} style={styles.small} />
         <Txt variant="title" style={styles.grow}>
           Elige tu sesión
         </Txt>
@@ -60,7 +61,10 @@ export function SelectScreen() {
             return (
               <Pressable
                 key={d.id}
-                onPress={() => setDj(d.id)}
+                onPress={() => {
+                  playUi('select')
+                  setDj(d.id)
+                }}
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
                 style={[styles.card, styles.djCard, selected && { borderColor: d.look.jersey }]}
@@ -91,7 +95,10 @@ export function SelectScreen() {
             return (
               <Pressable
                 key={s.id}
-                onPress={() => setStage(s.id)}
+                onPress={() => {
+                  playUi('select')
+                  setStage(s.id)
+                }}
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
                 style={[styles.card, styles.stageCard, selected && styles.selected]}
@@ -114,7 +121,10 @@ export function SelectScreen() {
               return (
                 <Pressable
                   key={l}
-                  onPress={() => setLevel(l)}
+                  onPress={() => {
+                    playUi('select')
+                    setLevel(l)
+                  }}
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
                   style={[styles.card, styles.level, selected && styles.selected]}

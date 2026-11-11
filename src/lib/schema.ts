@@ -28,6 +28,7 @@ export const settings = sqliteTable('settings', {
   lastDj: text('lastDj'),
   lastStage: text('lastStage'),
   lastLevel: text('lastLevel').$type<Level>(),
+  showPerf: integer('showPerf', { mode: 'boolean' }),
   lastBackup: integer('lastBackup').notNull().default(0),
   schemaVersion: integer('schemaVersion').notNull(),
 })

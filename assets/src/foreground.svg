@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Capa delantera del icono adaptable de Android. El fondo morado lo pone
+       app.json; el dibujo cabe en el 66 % central, que es lo que se ve con
+       cualquier forma de icono (círculo, gota, cuadrado redondeado). -->
+  <g transform="translate(512 512) scale(0.84) translate(-512 -548)">
+  <!-- El vinilo con auriculares: un DJ hecho disco. -->
+  <g id="mark">
+    <circle cx="512" cy="548" r="300" fill="#0d0a14"/>
+    <circle cx="512" cy="548" r="295" fill="none" stroke="#e7e1f5" stroke-width="12"/>
+    <circle cx="512" cy="548" r="250" fill="none" stroke="#2f2744" stroke-width="7"/>
+    <circle cx="512" cy="548" r="208" fill="none" stroke="#2f2744" stroke-width="7"/>
+    <circle cx="512" cy="548" r="166" fill="none" stroke="#2f2744" stroke-width="7"/>
+    <path d="M 340 420 A 215 215 0 0 1 470 345" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="16" stroke-linecap="round"/>
+    <path d="M 684 676 A 215 215 0 0 1 554 751" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="512" cy="548" r="112" fill="#ffd84a"/>
+    <circle cx="512" cy="548" r="112" fill="none" stroke="#0d0a14" stroke-width="8"/>
+    <path d="M 548 520 L 600 520" stroke="#0d0a14" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="512" cy="548" r="18" fill="#0d0a14"/>
+    <path d="M 200 560 A 312 330 0 0 1 824 560" fill="none" stroke="#0d0a14" stroke-width="64" stroke-linecap="round"/>
+    <path d="M 200 560 A 312 330 0 0 1 824 560" fill="none" stroke="#f3f1ec" stroke-width="40" stroke-linecap="round"/>
+    <rect x="148" y="470" width="104" height="178" rx="46" fill="#ff5fd2" stroke="#0d0a14" stroke-width="14"/>
+    <rect x="772" y="470" width="104" height="178" rx="46" fill="#ff5fd2" stroke="#0d0a14" stroke-width="14"/>
+  </g>
+  </g>
+</svg>

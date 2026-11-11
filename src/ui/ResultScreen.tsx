@@ -66,8 +66,8 @@ export function ResultScreen() {
       </Txt>
 
       <View style={styles.buttons}>
-        <Button title="Menú" kind="secondary" onPress={() => router.dismissTo('/')} />
-        <Button title="Cambiar" kind="secondary" onPress={() => router.back()} />
+        <Button title="Menú" kind="secondary" sound="back" onPress={() => router.dismissTo('/')} />
+        <Button title="Cambiar" kind="secondary" sound="back" onPress={() => router.back()} />
         <Button title="Revancha" onPress={() => router.replace({ pathname: '/partido', params: setupParams(setup) })} />
       </View>
     </View>
